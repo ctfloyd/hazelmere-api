@@ -26,9 +26,10 @@ func (app *Application) Init(ctx context.Context, l logger.Logger) {
 
 	username := os.Getenv("MONGOUSER")
 	password := os.Getenv("MONGOPASSWORD")
+	host := os.Getenv("MONGOURL")
 
 	c, err := initialize.MongoClient(
-		"mongodb://turntable.proxy.rlwy.net:44145",
+		host,
 		username,
 		password,
 	)
