@@ -26,7 +26,7 @@ func (app *Application) Init(ctx context.Context, l logger.Logger) {
 
 	username := os.Getenv("MONGOUSER")
 	password := os.Getenv("MONGOPASSWORD")
-	host := os.Getenv("MONGOURL")
+	host := os.Getenv("MONGO_URL")
 
 	c, err := initialize.MongoClient(
 		host,
