@@ -3,8 +3,10 @@ package handler
 import (
 	"api/src/internal/common/service_error"
 	"api/src/pkg/api"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
+	"io"
 	"net/http"
 	"time"
 )
@@ -44,6 +46,22 @@ func Ok(w http.ResponseWriter, response any) {
 	if err != nil {
 		Error(w, service_error.Internal, "Could not write all bytes in the response.")
 	}
+}
+
+func ReadBody(w http.ResponseWriter, r *http.Request, body any) bool {
+	bytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		Error(w, service_error.Internal, "An unexpected error occurred while reading request body.")
+		return false
+	}
+
+	err = jsoniter.Unmarshal(bytes, body)
+	if err != nil {
+		Error(w, service_error.BadRequest, fmt.Sprintf("The request body could not be parsed. %v", err))
+		return false
+	}
+
+	return true
 }
 
 func convertServiceErrorToResponse(serviceError service_error.ServiceError, message string) api.ErrorResponse {

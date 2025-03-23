@@ -2,22 +2,6 @@ package api
 
 import "time"
 
-type ActivityType string
-
-const (
-	ActivityTypeUnknown  ActivityType = "UNKNOWN"
-	ActivityTypeOverall  ActivityType = "OVERALL"
-	ActivityTypeJad      ActivityType = "JAD"
-	ActivityTypeSoulWars ActivityType = "SOULWARS"
-)
-
-var AllActivityTypes = []ActivityType{
-	ActivityTypeUnknown,
-	ActivityTypeOverall,
-	ActivityTypeJad,
-	ActivityTypeSoulWars,
-}
-
 type HiscoreSnapshot struct {
 	Id         string             `json:"id"`
 	UserId     string             `json:"userId"`
@@ -49,6 +33,13 @@ type ActivitySnapshot struct {
 	Rank         int          `json:"rank"`
 }
 
+type CreateSnapshotRequest struct {
+	Snapshot HiscoreSnapshot `json:"snapshot"`
+}
+
+type CreateSnapshotResponse struct {
+	Snapshot HiscoreSnapshot `json:"snapshot"`
+}
 type GetAllHiscoreSnapshotsForUserResponse struct {
 	Snapshots []HiscoreSnapshot `json:"snapshots"`
 }

@@ -33,8 +33,67 @@ func MapDomainToApi(snapshot HiscoreSnapshot) api.HiscoreSnapshot {
 
 }
 
-func MapDomainToData() {
+func MapDomainToData(snapshot HiscoreSnapshot) HiscoreSnapshotData {
+	return HiscoreSnapshotData{
+		Id:         snapshot.Id,
+		UserId:     snapshot.UserId,
+		Timestamp:  snapshot.Timestamp,
+		Skills:     mapDomainSkillsToDataSkills(snapshot.Skills),
+		Bosses:     mapDomainBossesToDataBosses(snapshot.Bosses),
+		Activities: mapDomainActivitiesToDataActivities(snapshot.Activities),
+	}
+}
 
+func mapDomainSkillsToDataSkills(skills []SkillSnapshot) []SkillSnapshotData {
+	skillsData := make([]SkillSnapshotData, len(skills))
+	for i := 0; i < len(skills); i++ {
+		skillsData[i] = mapDomainSkillToDataSkill(skills[i])
+	}
+	return skillsData
+}
+
+func mapDomainSkillToDataSkill(skill SkillSnapshot) SkillSnapshotData {
+	return SkillSnapshotData{
+		ActivityType: string(skill.ActivityType),
+		Name:         skill.Name,
+		Level:        skill.Level,
+		Experience:   skill.Experience,
+		Rank:         skill.Rank,
+	}
+}
+
+func mapDomainBossesToDataBosses(bosses []BossSnapshot) []BossSnapshotData {
+	bossData := make([]BossSnapshotData, len(bosses))
+	for i := 0; i < len(bosses); i++ {
+		bossData[i] = mapDomainBossToDataBoss(bosses[i])
+	}
+	return bossData
+}
+
+func mapDomainBossToDataBoss(boss BossSnapshot) BossSnapshotData {
+	return BossSnapshotData{
+		ActivityType: string(boss.ActivityType),
+		Name:         boss.Name,
+		KillCount:    boss.KillCount,
+		Rank:         boss.Rank,
+	}
+}
+
+func mapDomainActivitiesToDataActivities(activities []ActivitySnapshot) []ActivitySnapshotData {
+	activityData := make([]ActivitySnapshotData, len(activities))
+	for i := 0; i < len(activities); i++ {
+		activityData[i] = mapDomainActivityToDataActivity(activities[i])
+	}
+	return activityData
+}
+
+func mapDomainActivityToDataActivity(activity ActivitySnapshot) ActivitySnapshotData {
+	return ActivitySnapshotData{
+		ActivityType: string(activity.ActivityType),
+		Name:         activity.Name,
+		Score:        activity.Score,
+		Rank:         activity.Rank,
+	}
 }
 
 func MapManyDataToDomain(snapshots []HiscoreSnapshotData) []HiscoreSnapshot {

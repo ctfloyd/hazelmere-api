@@ -44,7 +44,8 @@ func (app *Application) Init(ctx context.Context, l logger.Logger) {
 	})
 	sc := f.NewSnapshotCollection()
 	sr := snapshot.NewSnapshotRepository(sc, l)
-	ss := snapshot.NewSnapshotService(l, sr)
+	sv := snapshot.NewSnapshotValidator()
+	ss := snapshot.NewSnapshotService(l, sr, sv)
 	sh := snapshot.NewSnapshotHandler(l, ss)
 
 	l.Info(context.TODO(), "Init router.")

@@ -2,31 +2,6 @@ package snapshot
 
 import "time"
 
-type ActivityType string
-
-const (
-	ActivityTypeUnknown  ActivityType = "UNKNOWN"
-	ActivityTypeOverall  ActivityType = "OVERALL"
-	ActivityTypeJad      ActivityType = "JAD"
-	ActivityTypeSoulWars ActivityType = "SOULWARS"
-)
-
-var AllActivityTypes = []ActivityType{
-	ActivityTypeUnknown,
-	ActivityTypeOverall,
-	ActivityTypeJad,
-	ActivityTypeSoulWars,
-}
-
-func ActivityTypeFromValue(value string) ActivityType {
-	for _, at := range AllActivityTypes {
-		if value == string(at) {
-			return at
-		}
-	}
-	return ActivityTypeUnknown
-}
-
 type HiscoreSnapshot struct {
 	Id         string
 	UserId     string

@@ -5,6 +5,7 @@ import (
 	"api/src/internal/common/logger"
 	"api/src/internal/common/service_error"
 	"api/src/pkg/api"
+	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"net/http"
@@ -22,6 +23,7 @@ func NewSnapshotHandler(logger logger.Logger, service SnapshotService) *Snapshot
 func (sh *SnapshotHandler) RegisterRoutes(mux *chi.Mux, version handler.ApiVersion) {
 	if version == handler.ApiVersionV1 {
 		mux.Get(fmt.Sprintf("/v1/snapshot/{userId:%s}", handler.RegexUuid), sh.GetAllSnapshotsForUser)
+		mux.Post("/v1/snapshot", sh.CreateSnapshot)
 		mux.Get("/v1/hello", sh.Hello)
 	}
 }
@@ -37,6 +39,30 @@ func (sh *SnapshotHandler) GetAllSnapshotsForUser(w http.ResponseWriter, r *http
 
 	response := api.GetAllHiscoreSnapshotsForUserResponse{
 		Snapshots: MapManyDomainToApi(snapshots),
+	}
+
+	handler.Ok(w, response)
+}
+
+func (sh *SnapshotHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
+	var createSnapshotRequest api.CreateSnapshotRequest
+	if ok := handler.ReadBody(w, r, &createSnapshotRequest); !ok {
+		return
+	}
+
+	snapshot, err := sh.service.CreateSnapshot(r.Context(), MapApiToDomain(createSnapshotRequest.Snapshot))
+	if err != nil {
+		if errors.Is(err, ErrSnapshotValidation) {
+			handler.Error(w, service_error.InvalidSnapshot, "The given snapshot is invalid. "+err.Error())
+			return
+		}
+
+		handler.Error(w, service_error.Internal, "An unexpected error occurred while creating snapshot.")
+		return
+	}
+
+	response := api.CreateSnapshotResponse{
+		Snapshot: MapDomainToApi(snapshot),
 	}
 
 	handler.Ok(w, response)
