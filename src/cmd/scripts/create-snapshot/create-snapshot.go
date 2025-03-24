@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -100,39 +101,46 @@ func main() {
 		}
 	}
 
-	createRequest := api.CreateSnapshotRequest{
-		Snapshot: snapshot,
-	}
+	start := time.Now()
+	userId := uuid.New().String()
+	for i := 0; i < 100; i++ {
+		snapshot.Timestamp = start.Add(-1 * time.Duration(i) * time.Hour * 24)
+		snapshot.UserId = userId
+		createRequest := api.CreateSnapshotRequest{
+			Snapshot: snapshot,
+		}
 
-	b, err := jsoniter.Marshal(createRequest)
-	if err != nil {
-		panic(err)
-	}
-
-	saveReq, err := http.NewRequest("POST", "http://localhost:8080/v1/snapshot", bytes.NewReader(b))
-	if err != nil {
-		panic(err)
-	}
-	saveReq.Header.Set("Content-Type", "application/json")
-
-	saveRes, err := http.DefaultClient.Do(saveReq)
-	if err != nil {
-		panic(err)
-	}
-
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
+		b, err := jsoniter.Marshal(createRequest)
 		if err != nil {
 			panic(err)
 		}
-	}(saveRes.Body)
 
-	saveB, err := io.ReadAll(saveRes.Body)
-	if err != nil {
-		panic(err)
+		saveReq, err := http.NewRequest("POST", "https://api.hazelmere.xyz/v1/snapshot", bytes.NewReader(b))
+		if err != nil {
+			panic(err)
+		}
+		saveReq.Header.Set("Content-Type", "application/json")
+
+		saveRes, err := http.DefaultClient.Do(saveReq)
+		if err != nil {
+			panic(err)
+		}
+
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				panic(err)
+			}
+		}(saveRes.Body)
+
+		saveB, err := io.ReadAll(saveRes.Body)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println(strconv.Itoa(i) + " : " + string(saveB))
 	}
 
-	fmt.Println(string(saveB))
 }
 
 func removeIllegalChars(str string) string {
