@@ -79,7 +79,7 @@ func newPropagator() propagation.TextMapPropagator {
 
 func newTracerProvider() (*trace.TracerProvider, error) {
 	client := otlptracehttp.NewClient(
-		otlptracehttp.WithEndpoint("http://tempo.railway.internal:4318"),
+		otlptracehttp.WithEndpoint("tempo.railway.internal:4318"),
 		otlptracehttp.WithInsecure(),
 	)
 
