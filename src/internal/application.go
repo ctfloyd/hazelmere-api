@@ -9,16 +9,33 @@ import (
 	"context"
 	"github.com/go-chi/chi/v5"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.opentelemetry.io/otel"
 	"os"
 )
 
 type Application struct {
-	Router      *chi.Mux
-	MongoClient *mongo.Client
+	Router       *chi.Mux
+	MongoClient  *mongo.Client
+	OtelShutdown func(context.Context) error
 }
 
 func (app *Application) Init(ctx context.Context, l logger.Logger) {
 	l.Info(context.TODO(), "Init Hazelmere web service.")
+
+	env := os.Getenv("ENVIRONMENT")
+	if env == "" {
+		env = "local"
+	}
+
+	// Set up OpenTelemetry.
+	if env != "local" {
+		otelShutdown, err := initialize.OtelSetup(ctx)
+		if err != nil {
+			panic(err)
+		}
+		app.OtelShutdown = otelShutdown
+	}
+
 	router := initialize.InitRouter(l)
 	app.Router = router
 
@@ -46,7 +63,7 @@ func (app *Application) Init(ctx context.Context, l logger.Logger) {
 	sr := snapshot.NewSnapshotRepository(sc, l)
 	sv := snapshot.NewSnapshotValidator()
 	ss := snapshot.NewSnapshotService(l, sr, sv)
-	sh := snapshot.NewSnapshotHandler(l, ss)
+	sh := snapshot.NewSnapshotHandler(l, otel.Tracer("SnapshotHandler"), ss)
 
 	l.Info(context.TODO(), "Init router.")
 	handlers := []handler.HazelmereHandler{sh}
@@ -59,4 +76,5 @@ func (app *Application) Init(ctx context.Context, l logger.Logger) {
 
 func (app *Application) Cleanup(ctx context.Context) {
 	initialize.MongoCleanup(ctx, app.MongoClient)
+	initialize.OtelCleanup(app.OtelShutdown)
 }

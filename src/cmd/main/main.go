@@ -5,12 +5,16 @@ import (
 	"api/src/internal/common/logger"
 	"context"
 	"net/http"
+	"os"
+	"os/signal"
 )
 
 func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	l := logger.NewZeroLogAdapater(logger.LogLevelDebug)
 
-	ctx := context.Background()
 	app := internal.Application{}
 	app.Init(ctx, l)
 
