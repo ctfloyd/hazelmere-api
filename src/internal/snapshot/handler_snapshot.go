@@ -96,7 +96,3 @@ func (sh *SnapshotHandler) GetSnapshotForUserNearestTimestamp(w http.ResponseWri
 
 	handler.Ok(w, response)
 }
-
-func (sh *SnapshotHandler) Hello(w http.ResponseWriter, r *http.Request) {
-	handler.Ok(w, map[string]string{"hello": "world"})
-}
