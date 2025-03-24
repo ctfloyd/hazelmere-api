@@ -44,6 +44,6 @@ type CreateSnapshotResponse struct {
 type GetSnapshotNearestTimestampResponse struct {
 	Snapshot HiscoreSnapshot `json:"snapshot"`
 }
-type GetAllHiscoreSnapshotsForUserResponse struct {
+type GetAllSnapshotsForUser struct {
 	Snapshots []HiscoreSnapshot `json:"snapshots"`
 }

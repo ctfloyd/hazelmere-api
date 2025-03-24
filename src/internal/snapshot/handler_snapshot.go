@@ -38,7 +38,7 @@ func (sh *SnapshotHandler) GetAllSnapshotsForUser(w http.ResponseWriter, r *http
 		handler.Error(w, service_error.Internal, "An unexpected error occurred while getting all snapshots for user.")
 	}
 
-	response := api.GetAllHiscoreSnapshotsForUserResponse{
+	response := api.GetAllSnapshotsForUser{
 		Snapshots: MapManyDomainToApi(snapshots),
 	}
 

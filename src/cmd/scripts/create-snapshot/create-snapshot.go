@@ -2,7 +2,7 @@ package main
 
 import (
 	"api/src/pkg/api"
-	"bytes"
+	"api/src/pkg/client"
 	"fmt"
 	"github.com/google/uuid"
 	jsoniter "github.com/json-iterator/go"
@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -101,6 +100,13 @@ func main() {
 		}
 	}
 
+	config := client.HazelmereClientConfig{
+		Host:      "https://api.hazelmere.xyz",
+		TimeoutMs: 500,
+	}
+	cl := client.NewHazelmereClient(config, func(msg string) { fmt.Printf(msg) })
+	hazelmere := client.NewHazelmere(cl)
+
 	start := time.Now()
 	userId := uuid.New().String()
 	for i := 0; i < 100; i++ {
@@ -110,35 +116,11 @@ func main() {
 			Snapshot: snapshot,
 		}
 
-		b, err := jsoniter.Marshal(createRequest)
+		response, err := hazelmere.Snapshot.CreateSnapshot(createRequest)
 		if err != nil {
 			panic(err)
 		}
-
-		saveReq, err := http.NewRequest("POST", "https://api.hazelmere.xyz/v1/snapshot", bytes.NewReader(b))
-		if err != nil {
-			panic(err)
-		}
-		saveReq.Header.Set("Content-Type", "application/json")
-
-		saveRes, err := http.DefaultClient.Do(saveReq)
-		if err != nil {
-			panic(err)
-		}
-
-		defer func(Body io.ReadCloser) {
-			err := Body.Close()
-			if err != nil {
-				panic(err)
-			}
-		}(saveRes.Body)
-
-		saveB, err := io.ReadAll(saveRes.Body)
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Println(strconv.Itoa(i) + " : " + string(saveB))
+		fmt.Printf("%d: %v\n", i, response)
 	}
 
 }

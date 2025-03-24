@@ -1,20 +1,16 @@
 package service_error
 
-import "net/http"
+import (
+	"api/src/pkg/api"
+	"net/http"
+)
 
 type ServiceError struct {
 	Code   string
 	Status int
 }
 
-const (
-	ErrorCodeInternal         = "INTERNAL_SERVICE_ERROR"
-	ErrorCodeBadRequest       = "BAD_REQUEST"
-	ErrorCodeInvalidSnapshot  = "INVALID_SNAPSHOT"
-	ErrorCodeSnapshotNotFound = "SNAPSHOT_NOT_FOUND"
-)
-
-var Internal = ServiceError{Code: ErrorCodeInternal, Status: http.StatusInternalServerError}
-var BadRequest = ServiceError{Code: ErrorCodeBadRequest, Status: http.StatusBadRequest}
-var InvalidSnapshot = ServiceError{Code: ErrorCodeInvalidSnapshot, Status: http.StatusBadRequest}
-var SnapshotNotFound = ServiceError{Code: ErrorCodeSnapshotNotFound, Status: http.StatusNotFound}
+var Internal = ServiceError{Code: api.ErrorCodeInternal, Status: http.StatusInternalServerError}
+var BadRequest = ServiceError{Code: api.ErrorCodeBadRequest, Status: http.StatusBadRequest}
+var InvalidSnapshot = ServiceError{Code: api.ErrorCodeInvalidSnapshot, Status: http.StatusBadRequest}
+var SnapshotNotFound = ServiceError{Code: api.ErrorCodeSnapshotNotFound, Status: http.StatusNotFound}
