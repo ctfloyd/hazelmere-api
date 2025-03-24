@@ -146,7 +146,7 @@ func (hc *HazelmereClient) handleNonRetryableErrorResponse(res *http.Response) e
 	}
 
 	if value, ok := hc.errorMap[errorResponse.Code]; ok {
-		return value
+		return errors.Join(value, errors.New(errorResponse.Message))
 	} else {
 		return errors.Join(ErrHazelmereClient, errors.New(fmt.Sprintf("[%s] - %s", errorResponse.Code, errorResponse.Message)))
 	}

@@ -54,7 +54,7 @@ func (sh *SnapshotHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 	snapshot, err := sh.service.CreateSnapshot(r.Context(), MapApiToDomain(createSnapshotRequest.Snapshot))
 	if err != nil {
 		if errors.Is(err, ErrSnapshotValidation) {
-			handler.Error(w, service_error.InvalidSnapshot, "The given snapshot is invalid. "+err.Error())
+			handler.Error(w, service_error.InvalidSnapshot, err.Error())
 			return
 		}
 
