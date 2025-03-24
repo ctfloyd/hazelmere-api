@@ -32,7 +32,7 @@ func (sh *SnapshotHandler) RegisterRoutes(mux *chi.Mux, version handler.ApiVersi
 }
 
 func (sh *SnapshotHandler) GetAllSnapshotsForUser(w http.ResponseWriter, r *http.Request) {
-	ctx, span := sh.tracer.Start(r.Context(), "GetAllSnapshotsForUser")
+	ctx, span := sh.tracer.Start(r.Context(), "SnapshotHandler.GetAllSnapshotsForUser")
 	defer span.End()
 
 	userId := chi.URLParam(r, "userId")
@@ -51,7 +51,7 @@ func (sh *SnapshotHandler) GetAllSnapshotsForUser(w http.ResponseWriter, r *http
 }
 
 func (sh *SnapshotHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
-	ctx, span := sh.tracer.Start(r.Context(), "CreateSnapshot")
+	ctx, span := sh.tracer.Start(r.Context(), "SnapshotHandler.CreateSnapshot")
 	defer span.End()
 
 	var createSnapshotRequest api.CreateSnapshotRequest
@@ -78,7 +78,7 @@ func (sh *SnapshotHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 }
 
 func (sh *SnapshotHandler) GetSnapshotForUserNearestTimestamp(w http.ResponseWriter, r *http.Request) {
-	ctx, span := sh.tracer.Start(r.Context(), "GetSnapshotForUserNearestTimestamp")
+	ctx, span := sh.tracer.Start(r.Context(), "SnapshotHandler.GetSnapshotForUserNearestTimestamp")
 	defer span.End()
 
 	userId := chi.URLParam(r, "userId")

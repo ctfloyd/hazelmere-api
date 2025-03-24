@@ -12,7 +12,9 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.9.0"
 	"time"
 )
 
@@ -88,9 +90,16 @@ func newTracerProvider() (*trace.TracerProvider, error) {
 		return nil, err
 	}
 
+	traceRes, err := resource.New(context.Background(),
+		resource.WithAttributes(semconv.ServiceNameKey.String("hazelmere-api")),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	tracerProvider := trace.NewTracerProvider(
-		trace.WithBatcher(traceExporter,
-			trace.WithBatchTimeout(5*time.Second)),
+		trace.WithResource(traceRes),
+		trace.WithBatcher(traceExporter, trace.WithBatchTimeout(5*time.Second)),
 	)
 	return tracerProvider, nil
 }
