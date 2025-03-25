@@ -1,6 +1,6 @@
 package user
 
-import "api/src/pkg/api"
+import "github.com/ctfloyd/hazelmere-api/src/pkg/api"
 
 func MapCreateUserRequestToDomainUser(request api.CreateUserRequest) User {
 	return User{

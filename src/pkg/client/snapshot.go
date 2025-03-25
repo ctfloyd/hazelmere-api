@@ -1,9 +1,9 @@
 package client
 
 import (
-	"api/src/pkg/api"
 	"errors"
 	"fmt"
+	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 )
 
 var ErrSnapshotNotFound = errors.Join(ErrHazelmereClient, errors.New("snapshot not found"))

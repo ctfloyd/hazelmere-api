@@ -1,12 +1,12 @@
 package snapshot
 
 import (
-	"api/src/internal/common/handler"
-	"api/src/internal/common/logger"
-	"api/src/internal/common/service_error"
-	"api/src/pkg/api"
 	"errors"
 	"fmt"
+	"github.com/ctfloyd/hazelmere-api/src/internal/common/handler"
+	"github.com/ctfloyd/hazelmere-api/src/internal/common/logger"
+	"github.com/ctfloyd/hazelmere-api/src/internal/common/service_error"
+	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"github.com/go-chi/chi/v5"
 	"net/http"
 	"strconv"

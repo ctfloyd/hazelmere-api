@@ -1,7 +1,7 @@
 package service_error
 
 import (
-	"api/src/pkg/api"
+	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"net/http"
 )
 

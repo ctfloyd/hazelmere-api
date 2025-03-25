@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"api/src/internal/common/service_error"
-	"api/src/pkg/api"
 	"fmt"
+	"github.com/ctfloyd/hazelmere-api/src/internal/common/service_error"
+	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
 	"io"

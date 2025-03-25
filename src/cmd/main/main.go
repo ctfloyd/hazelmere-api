@@ -1,9 +1,9 @@
 package main
 
 import (
-	"api/src/internal"
-	"api/src/internal/common/logger"
 	"context"
+	"github.com/ctfloyd/hazelmere-api/src/internal"
+	"github.com/ctfloyd/hazelmere-api/src/internal/common/logger"
 	"net/http"
 	"os"
 	"os/signal"

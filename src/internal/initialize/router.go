@@ -1,7 +1,7 @@
 package initialize
 
 import (
-	"api/src/internal/common/logger"
+	"github.com/ctfloyd/hazelmere-api/src/internal/common/logger"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"time"

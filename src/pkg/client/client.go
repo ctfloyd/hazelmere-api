@@ -1,10 +1,10 @@
 package client
 
 import (
-	"api/src/pkg/api"
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	jsoniter "github.com/json-iterator/go"
 	"io"
 	"math"

@@ -1,10 +1,10 @@
 package user
 
 import (
-	"api/src/internal/common/database"
-	"api/src/internal/common/logger"
 	"context"
 	"errors"
+	"github.com/ctfloyd/hazelmere-api/src/internal/common/database"
+	"github.com/ctfloyd/hazelmere-api/src/internal/common/logger"
 	"github.com/google/uuid"
 )
 

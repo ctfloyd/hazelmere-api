@@ -1,9 +1,9 @@
 package main
 
 import (
-	"api/src/pkg/api"
-	"api/src/pkg/client"
 	"fmt"
+	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
+	"github.com/ctfloyd/hazelmere-api/src/pkg/client"
 	"github.com/google/uuid"
 	jsoniter "github.com/json-iterator/go"
 	"io"

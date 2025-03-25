@@ -1,6 +1,6 @@
 package snapshot
 
-import "api/src/pkg/api"
+import "github.com/ctfloyd/hazelmere-api/src/pkg/api"
 
 func MapApiToDomain(snapshot api.HiscoreSnapshot) HiscoreSnapshot {
 	return HiscoreSnapshot{

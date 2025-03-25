@@ -1,13 +1,13 @@
 package internal
 
 import (
-	"api/src/internal/common/database"
-	"api/src/internal/common/handler"
-	"api/src/internal/common/logger"
-	"api/src/internal/initialize"
-	"api/src/internal/snapshot"
-	"api/src/internal/user"
 	"context"
+	"github.com/ctfloyd/hazelmere-api/src/internal/common/database"
+	"github.com/ctfloyd/hazelmere-api/src/internal/common/handler"
+	"github.com/ctfloyd/hazelmere-api/src/internal/common/logger"
+	"github.com/ctfloyd/hazelmere-api/src/internal/initialize"
+	"github.com/ctfloyd/hazelmere-api/src/internal/snapshot"
+	"github.com/ctfloyd/hazelmere-api/src/internal/user"
 	"github.com/go-chi/chi/v5"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"os"
