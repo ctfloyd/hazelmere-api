@@ -47,6 +47,10 @@ func (hc *HazelmereClient) AddErrorMappings(errors map[string]error) {
 	}
 }
 
+func (hc *HazelmereClient) GetHost() string {
+	return hc.config.Host
+}
+
 func (hc *HazelmereClient) GetV1Url() string {
 	return fmt.Sprintf("%s/%s", hc.config.Host, "v1")
 }
