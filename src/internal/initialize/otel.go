@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-func OtelSetup(ctx context.Context) (shutdown func(context.Context) error, err error) {
+func OtelSetup(ctx context.Context, env string, region string) (shutdown func(context.Context) error, err error) {
 	var shutdownFuncs []func(context.Context) error
 
 	// shutdown calls cleanup functions registered via shutdownFuncs.
@@ -42,8 +42,17 @@ func OtelSetup(ctx context.Context) (shutdown func(context.Context) error, err e
 	prop := newPropagator()
 	otel.SetTextMapPropagator(prop)
 
+	res, err := resource.New(context.Background(),
+		resource.WithAttributes(semconv.ServiceNameKey.String("hazelmere-api")),
+		resource.WithAttributes(semconv.DeploymentEnvironmentKey.String(env)),
+		resource.WithAttributes(semconv.CloudRegionKey.String(region)),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	// Set up trace provider.
-	tracerProvider, err := newTracerProvider()
+	tracerProvider, err := newTracerProvider(res)
 	if err != nil {
 		handleErr(err)
 		return
@@ -52,7 +61,7 @@ func OtelSetup(ctx context.Context) (shutdown func(context.Context) error, err e
 	otel.SetTracerProvider(tracerProvider)
 
 	// Set up meter provider.
-	meterProvider, err := newMeterProvider()
+	meterProvider, err := newMeterProvider(res)
 	if err != nil {
 		handleErr(err)
 		return
@@ -61,7 +70,7 @@ func OtelSetup(ctx context.Context) (shutdown func(context.Context) error, err e
 	otel.SetMeterProvider(meterProvider)
 
 	// Set up logger provider.
-	loggerProvider, err := newLoggerProvider()
+	loggerProvider, err := newLoggerProvider(res)
 	if err != nil {
 		handleErr(err)
 		return
@@ -79,7 +88,7 @@ func newPropagator() propagation.TextMapPropagator {
 	)
 }
 
-func newTracerProvider() (*trace.TracerProvider, error) {
+func newTracerProvider(resource *resource.Resource) (*trace.TracerProvider, error) {
 	client := otlptracehttp.NewClient(
 		otlptracehttp.WithEndpoint("tempo.railway.internal:4318"),
 		otlptracehttp.WithInsecure(),
@@ -90,40 +99,35 @@ func newTracerProvider() (*trace.TracerProvider, error) {
 		return nil, err
 	}
 
-	traceRes, err := resource.New(context.Background(),
-		resource.WithAttributes(semconv.ServiceNameKey.String("hazelmere-api")),
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	tracerProvider := trace.NewTracerProvider(
-		trace.WithResource(traceRes),
+		trace.WithResource(resource),
 		trace.WithBatcher(traceExporter, trace.WithBatchTimeout(5*time.Second)),
 	)
 	return tracerProvider, nil
 }
 
-func newMeterProvider() (*metric.MeterProvider, error) {
+func newMeterProvider(resource *resource.Resource) (*metric.MeterProvider, error) {
 	metricExporter, err := stdoutmetric.New()
 	if err != nil {
 		return nil, err
 	}
 
 	meterProvider := metric.NewMeterProvider(
+		metric.WithResource(resource),
 		metric.WithReader(metric.NewPeriodicReader(metricExporter,
 			metric.WithInterval(60*time.Second))),
 	)
 	return meterProvider, nil
 }
 
-func newLoggerProvider() (*log.LoggerProvider, error) {
+func newLoggerProvider(resource *resource.Resource) (*log.LoggerProvider, error) {
 	logExporter, err := stdoutlog.New()
 	if err != nil {
 		return nil, err
 	}
 
 	loggerProvider := log.NewLoggerProvider(
+		log.WithResource(resource),
 		log.WithProcessor(log.NewBatchProcessor(logExporter)),
 	)
 	return loggerProvider, nil

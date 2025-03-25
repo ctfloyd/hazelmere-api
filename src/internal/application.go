@@ -9,7 +9,6 @@ import (
 	"context"
 	"github.com/go-chi/chi/v5"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.opentelemetry.io/otel"
 	"os"
 )
 
@@ -29,7 +28,7 @@ func (app *Application) Init(ctx context.Context, l logger.Logger) {
 
 	// Set up OpenTelemetry.
 	if env != "local" {
-		otelShutdown, err := initialize.OtelSetup(ctx)
+		otelShutdown, err := initialize.OtelSetup(ctx, env, "us-west-2")
 		if err != nil {
 			panic(err)
 		}
@@ -63,7 +62,7 @@ func (app *Application) Init(ctx context.Context, l logger.Logger) {
 	sr := snapshot.NewSnapshotRepository(sc, l)
 	sv := snapshot.NewSnapshotValidator()
 	ss := snapshot.NewSnapshotService(l, sr, sv)
-	sh := snapshot.NewSnapshotHandler(l, otel.Tracer("SnapshotHandler"), ss)
+	sh := snapshot.NewSnapshotHandler(l, ss)
 
 	l.Info(context.TODO(), "Init router.")
 	handlers := []handler.HazelmereHandler{sh}

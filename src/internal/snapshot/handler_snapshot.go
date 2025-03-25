@@ -8,19 +8,23 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel"
 	"net/http"
 	"strconv"
 )
 
+var (
+	tracer = otel.Tracer("SnapshotHandler")
+	meter  = otel.Meter("SnapshotHandler")
+)
+
 type SnapshotHandler struct {
 	logger  logger.Logger
-	tracer  trace.Tracer
 	service SnapshotService
 }
 
-func NewSnapshotHandler(logger logger.Logger, tracer trace.Tracer, service SnapshotService) *SnapshotHandler {
-	return &SnapshotHandler{logger, tracer, service}
+func NewSnapshotHandler(logger logger.Logger, service SnapshotService) *SnapshotHandler {
+	return &SnapshotHandler{logger, service}
 }
 
 func (sh *SnapshotHandler) RegisterRoutes(mux *chi.Mux, version handler.ApiVersion) {
@@ -32,7 +36,7 @@ func (sh *SnapshotHandler) RegisterRoutes(mux *chi.Mux, version handler.ApiVersi
 }
 
 func (sh *SnapshotHandler) GetAllSnapshotsForUser(w http.ResponseWriter, r *http.Request) {
-	ctx, span := sh.tracer.Start(r.Context(), "SnapshotHandler.GetAllSnapshotsForUser")
+	ctx, span := tracer.Start(r.Context(), "SnapshotHandler.GetAllSnapshotsForUser")
 	defer span.End()
 
 	userId := chi.URLParam(r, "userId")
@@ -51,7 +55,7 @@ func (sh *SnapshotHandler) GetAllSnapshotsForUser(w http.ResponseWriter, r *http
 }
 
 func (sh *SnapshotHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
-	ctx, span := sh.tracer.Start(r.Context(), "SnapshotHandler.CreateSnapshot")
+	ctx, span := tracer.Start(r.Context(), "SnapshotHandler.CreateSnapshot")
 	defer span.End()
 
 	var createSnapshotRequest api.CreateSnapshotRequest
@@ -78,7 +82,7 @@ func (sh *SnapshotHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 }
 
 func (sh *SnapshotHandler) GetSnapshotForUserNearestTimestamp(w http.ResponseWriter, r *http.Request) {
-	ctx, span := sh.tracer.Start(r.Context(), "SnapshotHandler.GetSnapshotForUserNearestTimestamp")
+	ctx, span := tracer.Start(r.Context(), "SnapshotHandler.GetSnapshotForUserNearestTimestamp")
 	defer span.End()
 
 	userId := chi.URLParam(r, "userId")
