@@ -1,4 +1,4 @@
-module api
+module github.com/ctfloyd/hazelmere-api
 
 go 1.24.0
 
