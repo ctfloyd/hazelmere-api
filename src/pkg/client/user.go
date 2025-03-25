@@ -14,14 +14,14 @@ type User struct {
 	client *HazelmereClient
 }
 
-func newUser(client *HazelmereClient) *Snapshot {
+func newUser(client *HazelmereClient) *User {
 	mappings := map[string]error{
 		api.ErrorCodeUserNotFound:    ErrUserNotFound,
 		api.ErrorCodeInvalidSnapshot: ErrInvalidUser,
 	}
 	client.AddErrorMappings(mappings)
 
-	return &Snapshot{
+	return &User{
 		prefix: "user",
 		client: client,
 	}
