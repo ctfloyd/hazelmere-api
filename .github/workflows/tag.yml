@@ -7,11 +7,16 @@ jobs:
   tag:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Create Tag
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git tag -a "v${{ github.run_number }}" -m "Release v${{ github.run_number }}"
-          git push origin "v${{ github.run_number }}"
+      - name: Checkout code
+        uses: actions/checkout@v3
 
+      - name: Create tag
+        id: tag
+        run: echo "TAG=v0.0.${{ github.run_number }}" >> $GITHUB_ENV
+
+      - name: Push tag
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git tag ${{ env.TAG }}
+          git push origin ${{ env.TAG }}
