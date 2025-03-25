@@ -83,17 +83,23 @@ func (sr *mongoSnapshotRepository) GetSnapshotForUserNearestTimestamp(ctx contex
 	var greaterThan HiscoreSnapshotData
 	group.Go(func() error {
 		result, err := sr.getSnapshotForUserNearestTimestampLessThan(ctx, userId, timestamp)
-		if err == nil {
-			lessThan = result
+		if err != nil {
+			if !errors.Is(err, database.ErrNotFound) {
+				return err
+			}
 		}
-		return err
+		lessThan = result
+		return nil
 	})
 	group.Go(func() error {
 		result, err := sr.getSnapshotForUserNearestTimestampGreaterThan(ctx, userId, timestamp)
-		if err == nil {
-			greaterThan = result
+		if err != nil {
+			if !errors.Is(err, database.ErrNotFound) {
+				return err
+			}
 		}
-		return err
+		greaterThan = result
+		return nil
 	})
 	if err := group.Wait(); err != nil {
 		return HiscoreSnapshotData{}, errors.Join(database.ErrGeneric, err)
