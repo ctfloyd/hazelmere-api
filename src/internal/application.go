@@ -13,27 +13,12 @@ import (
 )
 
 type Application struct {
-	Router       *chi.Mux
-	MongoClient  *mongo.Client
-	OtelShutdown func(context.Context) error
+	Router      *chi.Mux
+	MongoClient *mongo.Client
 }
 
 func (app *Application) Init(ctx context.Context, l logger.Logger) {
 	l.Info(context.TODO(), "Init Hazelmere web service.")
-
-	env := os.Getenv("ENVIRONMENT")
-	if env == "" {
-		env = "local"
-	}
-
-	// Set up OpenTelemetry.
-	if env != "local" {
-		otelShutdown, err := initialize.OtelSetup(ctx, env, "us-west-2")
-		if err != nil {
-			panic(err)
-		}
-		app.OtelShutdown = otelShutdown
-	}
 
 	router := initialize.InitRouter(l)
 	app.Router = router
@@ -75,5 +60,4 @@ func (app *Application) Init(ctx context.Context, l logger.Logger) {
 
 func (app *Application) Cleanup(ctx context.Context) {
 	initialize.MongoCleanup(ctx, app.MongoClient)
-	initialize.OtelCleanup(app.OtelShutdown)
 }

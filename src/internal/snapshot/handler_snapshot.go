@@ -8,14 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"go.opentelemetry.io/otel"
 	"net/http"
 	"strconv"
-)
-
-var (
-	tracer = otel.Tracer("SnapshotHandler")
-	meter  = otel.Meter("SnapshotHandler")
 )
 
 type SnapshotHandler struct {
@@ -36,13 +30,10 @@ func (sh *SnapshotHandler) RegisterRoutes(mux *chi.Mux, version handler.ApiVersi
 }
 
 func (sh *SnapshotHandler) GetAllSnapshotsForUser(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracer.Start(r.Context(), "SnapshotHandler.GetAllSnapshotsForUser")
-	defer span.End()
-
 	userId := chi.URLParam(r, "userId")
 	sh.logger.InfoArgs(r.Context(), "Getting all snapshots for user: %s", userId)
 
-	snapshots, err := sh.service.GetAllSnapshotsForUser(ctx, userId)
+	snapshots, err := sh.service.GetAllSnapshotsForUser(r.Context(), userId)
 	if err != nil {
 		handler.Error(w, service_error.Internal, "An unexpected error occurred while getting all snapshots for user.")
 	}
@@ -55,15 +46,12 @@ func (sh *SnapshotHandler) GetAllSnapshotsForUser(w http.ResponseWriter, r *http
 }
 
 func (sh *SnapshotHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracer.Start(r.Context(), "SnapshotHandler.CreateSnapshot")
-	defer span.End()
-
 	var createSnapshotRequest api.CreateSnapshotRequest
 	if ok := handler.ReadBody(w, r, &createSnapshotRequest); !ok {
 		return
 	}
 
-	snapshot, err := sh.service.CreateSnapshot(ctx, MapApiToDomain(createSnapshotRequest.Snapshot))
+	snapshot, err := sh.service.CreateSnapshot(r.Context(), MapApiToDomain(createSnapshotRequest.Snapshot))
 	if err != nil {
 		if errors.Is(err, ErrSnapshotValidation) {
 			handler.Error(w, service_error.InvalidSnapshot, err.Error())
@@ -82,9 +70,6 @@ func (sh *SnapshotHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 }
 
 func (sh *SnapshotHandler) GetSnapshotForUserNearestTimestamp(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracer.Start(r.Context(), "SnapshotHandler.GetSnapshotForUserNearestTimestamp")
-	defer span.End()
-
 	userId := chi.URLParam(r, "userId")
 
 	timestampString := chi.URLParam(r, "timestamp")
@@ -96,7 +81,7 @@ func (sh *SnapshotHandler) GetSnapshotForUserNearestTimestamp(w http.ResponseWri
 
 	sh.logger.InfoArgs(r.Context(), "Getting snapshots for user: %s closest to %d", userId, millis)
 
-	snapshot, err := sh.service.GetSnapshotForUserNearestTimestamp(ctx, userId, millis)
+	snapshot, err := sh.service.GetSnapshotForUserNearestTimestamp(r.Context(), userId, millis)
 	if err != nil {
 		if errors.Is(err, ErrSnapshotNotFound) {
 			handler.Error(w, service_error.SnapshotNotFound, "Snapshot not found.")
