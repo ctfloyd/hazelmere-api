@@ -84,7 +84,7 @@ func (sr *mongoSnapshotRepository) GetSnapshotForUserNearestTimestamp(ctx contex
 	group.Go(func() error {
 		result, err := sr.getSnapshotForUserNearestTimestampLessThan(ctx, userId, timestamp)
 		if err != nil {
-			if !errors.Is(err, database.ErrNotFound) {
+			if !errors.Is(err, mongo.ErrNoDocuments) {
 				return err
 			}
 		}
@@ -94,7 +94,7 @@ func (sr *mongoSnapshotRepository) GetSnapshotForUserNearestTimestamp(ctx contex
 	group.Go(func() error {
 		result, err := sr.getSnapshotForUserNearestTimestampGreaterThan(ctx, userId, timestamp)
 		if err != nil {
-			if !errors.Is(err, database.ErrNotFound) {
+			if !errors.Is(err, mongo.ErrNoDocuments) {
 				return err
 			}
 		}
