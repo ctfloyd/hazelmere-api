@@ -96,6 +96,31 @@ func (hc *HazelmereClient) PostWithHeaders(url string, headers map[string]string
 	return hc.doRequest(req, response)
 }
 
+func (hc *HazelmereClient) Patch(url string, body any, response any) error {
+	return hc.PatchWithHeaders(url, nil, body, response)
+}
+
+func (hc *HazelmereClient) PatchWithHeaders(url string, headers map[string]string, body any, response any) error {
+	bodyBytes, err := jsoniter.Marshal(body)
+	if err != nil {
+		return errors.Join(ErrHazelmereClient, err)
+	}
+
+	req, err := http.NewRequest("PATCH", url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return errors.Join(err, ErrHazelmereClient)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	if headers != nil {
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+	}
+
+	return hc.doRequest(req, response)
+}
+
 func (hc *HazelmereClient) doRequest(request *http.Request, response any) error {
 	attempt := 0
 	for attempt < hc.config.Retries+1 {

@@ -14,3 +14,5 @@ var Internal = ServiceError{Code: api.ErrorCodeInternal, Status: http.StatusInte
 var BadRequest = ServiceError{Code: api.ErrorCodeBadRequest, Status: http.StatusBadRequest}
 var InvalidSnapshot = ServiceError{Code: api.ErrorCodeInvalidSnapshot, Status: http.StatusBadRequest}
 var SnapshotNotFound = ServiceError{Code: api.ErrorCodeSnapshotNotFound, Status: http.StatusNotFound}
+var UserNotFound = ServiceError{Code: api.ErrorCodeUserNotFound, Status: http.StatusNotFound}
+var RunescapeNameAlreadyTracked = ServiceError{Code: api.ErrorCodeRunescapeNameAlreadyTracked, Status: http.StatusBadRequest}

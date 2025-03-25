@@ -6,6 +6,7 @@ import (
 	"api/src/internal/common/logger"
 	"api/src/internal/initialize"
 	"api/src/internal/snapshot"
+	"api/src/internal/user"
 	"context"
 	"github.com/go-chi/chi/v5"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -42,15 +43,23 @@ func (app *Application) Init(ctx context.Context, l logger.Logger) {
 	f := database.NewMongoFactory(c, database.MongoFactoryConfig{
 		DatabaseName:           "hazelmere",
 		SnapshotCollectionName: "snapshot",
+		UserCollectionName:     "user",
 	})
+
 	sc := f.NewSnapshotCollection()
 	sr := snapshot.NewSnapshotRepository(sc, l)
 	sv := snapshot.NewSnapshotValidator()
 	ss := snapshot.NewSnapshotService(l, sr, sv)
 	sh := snapshot.NewSnapshotHandler(l, ss)
 
+	uc := f.NewUserCollection()
+	ur := user.NewUserRepository(uc, l)
+	uv := user.NewUserValidator()
+	us := user.NewUserService(l, ur, uv)
+	uh := user.NewUserHandler(l, us)
+
 	l.Info(context.TODO(), "Init router.")
-	handlers := []handler.HazelmereHandler{sh}
+	handlers := []handler.HazelmereHandler{sh, uh}
 	for i := 0; i < len(handlers); i++ {
 		handlers[i].RegisterRoutes(app.Router, handler.ApiVersionV1)
 	}
