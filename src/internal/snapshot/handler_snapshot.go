@@ -88,6 +88,7 @@ func (sh *SnapshotHandler) GetSnapshotForUserNearestTimestamp(w http.ResponseWri
 			return
 		}
 		handler.Error(w, service_error.Internal, "An unexpected error occurred while getting snapshots for user nearest timestamp.")
+		return
 	}
 
 	response := api.GetSnapshotNearestTimestampResponse{
