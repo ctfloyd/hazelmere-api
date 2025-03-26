@@ -3,7 +3,7 @@ package user
 import (
 	"errors"
 	"fmt"
-	error2 "github.com/ctfloyd/hazelmere-api/src/internal/service_error"
+	"github.com/ctfloyd/hazelmere-api/src/internal/service_error"
 	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_handler"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
@@ -35,10 +35,10 @@ func (uh *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request) {
 	user, err := uh.service.GetUserById(r.Context(), id)
 	if err != nil {
 		if errors.Is(ErrUserNotFound, err) {
-			hz_handler.Error(w, error2.UserNotFound, "User not found.")
+			hz_handler.Error(w, service_error.UserNotFound, "User not found.")
 			return
 		} else {
-			hz_handler.Error(w, error2.Internal, "An unexpected service_error occurred while performing the user operation.")
+			hz_handler.Error(w, service_error.Internal, "An unexpected service_error occurred while performing the user operation.")
 			return
 		}
 	}
@@ -53,7 +53,7 @@ func (uh *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request) {
 func (uh *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := uh.service.GetAllUsers(r.Context())
 	if err != nil {
-		hz_handler.Error(w, error2.Internal, "An unexpected service_error occurred while performing the user operation.")
+		hz_handler.Error(w, service_error.Internal, "An unexpected service_error occurred while performing the user operation.")
 		return
 	}
 
@@ -67,7 +67,7 @@ func (uh *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var createUserRequest api.CreateUserRequest
 	if ok := hz_handler.ReadBody(w, r, &createUserRequest); !ok {
-		hz_handler.Error(w, error2.BadRequest, "Request body could not be read.")
+		hz_handler.Error(w, service_error.BadRequest, "Request body could not be read.")
 		return
 	}
 
@@ -76,10 +76,10 @@ func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	user, err := uh.service.CreateUser(r.Context(), domainUser)
 	if err != nil {
 		if errors.Is(err, ErrRunescapeNameTracked) {
-			hz_handler.Error(w, error2.RunescapeNameAlreadyTracked, "The runescape name is already associated with a user.")
+			hz_handler.Error(w, service_error.RunescapeNameAlreadyTracked, "The runescape name is already associated with a user.")
 		}
 
-		hz_handler.Error(w, error2.Internal, "An unexpected service_error occurred while performing the user operation.")
+		hz_handler.Error(w, service_error.Internal, "An unexpected service_error occurred while performing the user operation.")
 		return
 	}
 
@@ -93,7 +93,7 @@ func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 func (uh *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	var updateUserRequest api.UpdateUserRequest
 	if ok := hz_handler.ReadBody(w, r, &updateUserRequest); !ok {
-		hz_handler.Error(w, error2.BadRequest, "Request body could not be read.")
+		hz_handler.Error(w, service_error.BadRequest, "Request body could not be read.")
 		return
 	}
 
@@ -102,10 +102,10 @@ func (uh *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	user, err := uh.service.UpdateUser(r.Context(), domainUser)
 	if err != nil {
 		if errors.Is(err, ErrRunescapeNameTracked) {
-			hz_handler.Error(w, error2.RunescapeNameAlreadyTracked, "The runescape name is already associated with a user.")
+			hz_handler.Error(w, service_error.RunescapeNameAlreadyTracked, "The runescape name is already associated with a user.")
 		}
 
-		hz_handler.Error(w, error2.Internal, "An unexpected service_error occurred while performing the user operation.")
+		hz_handler.Error(w, service_error.Internal, "An unexpected service_error occurred while performing the user operation.")
 		return
 	}
 
