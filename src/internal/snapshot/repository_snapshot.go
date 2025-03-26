@@ -3,8 +3,8 @@ package snapshot
 import (
 	"context"
 	"errors"
-	"github.com/ctfloyd/hazelmere-api/src/internal/common/database"
-	"github.com/ctfloyd/hazelmere-api/src/internal/common/logger"
+	"github.com/ctfloyd/hazelmere-api/src/internal/database"
+	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -20,11 +20,11 @@ type SnapshotRepository interface {
 }
 
 type mongoSnapshotRepository struct {
-	logger     logger.Logger
+	logger     hz_logger.Logger
 	collection *mongo.Collection
 }
 
-func NewSnapshotRepository(snapshotCollection *mongo.Collection, logger logger.Logger) SnapshotRepository {
+func NewSnapshotRepository(snapshotCollection *mongo.Collection, logger hz_logger.Logger) SnapshotRepository {
 	return &mongoSnapshotRepository{
 		collection: snapshotCollection,
 		logger:     logger,

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
+	"github.com/ctfloyd/hazelmere-commons/pkg/hz_client"
 )
 
 var ErrSnapshotNotFound = errors.Join(ErrHazelmereClient, errors.New("snapshot not found"))
@@ -11,10 +12,10 @@ var ErrInvalidSnapshot = errors.Join(ErrHazelmereClient, errors.New("invalid sna
 
 type Snapshot struct {
 	prefix string
-	client *HazelmereClient
+	client *hz_client.HttpClient
 }
 
-func newSnapshot(client *HazelmereClient) *Snapshot {
+func newSnapshot(client *hz_client.HttpClient) *Snapshot {
 	mappings := map[string]error{
 		api.ErrorCodeSnapshotNotFound: ErrSnapshotNotFound,
 		api.ErrorCodeInvalidSnapshot:  ErrInvalidSnapshot,

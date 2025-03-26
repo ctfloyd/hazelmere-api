@@ -2,12 +2,12 @@ package internal
 
 import (
 	"context"
-	"github.com/ctfloyd/hazelmere-api/src/internal/common/database"
-	"github.com/ctfloyd/hazelmere-api/src/internal/common/handler"
-	"github.com/ctfloyd/hazelmere-api/src/internal/common/logger"
+	"github.com/ctfloyd/hazelmere-api/src/internal/database"
 	"github.com/ctfloyd/hazelmere-api/src/internal/initialize"
 	"github.com/ctfloyd/hazelmere-api/src/internal/snapshot"
 	"github.com/ctfloyd/hazelmere-api/src/internal/user"
+	"github.com/ctfloyd/hazelmere-commons/pkg/hz_handler"
+	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/go-chi/chi/v5"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"os"
@@ -18,7 +18,7 @@ type Application struct {
 	MongoClient *mongo.Client
 }
 
-func (app *Application) Init(ctx context.Context, l logger.Logger) {
+func (app *Application) Init(ctx context.Context, l hz_logger.Logger) {
 	l.Info(context.TODO(), "Init Hazelmere web service.")
 
 	router := initialize.InitRouter(l)
@@ -59,9 +59,9 @@ func (app *Application) Init(ctx context.Context, l logger.Logger) {
 	uh := user.NewUserHandler(l, us)
 
 	l.Info(context.TODO(), "Init router.")
-	handlers := []handler.HazelmereHandler{sh, uh}
+	handlers := []hz_handler.HazelmereHandler{sh, uh}
 	for i := 0; i < len(handlers); i++ {
-		handlers[i].RegisterRoutes(app.Router, handler.ApiVersionV1)
+		handlers[i].RegisterRoutes(app.Router, hz_handler.ApiVersionV1)
 	}
 
 	l.Info(context.TODO(), "Done init.")

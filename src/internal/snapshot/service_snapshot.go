@@ -3,13 +3,13 @@ package snapshot
 import (
 	"context"
 	"errors"
-	"github.com/ctfloyd/hazelmere-api/src/internal/common/database"
-	"github.com/ctfloyd/hazelmere-api/src/internal/common/logger"
+	"github.com/ctfloyd/hazelmere-api/src/internal/database"
+	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/google/uuid"
 	"time"
 )
 
-var ErrSnapshotGeneric = errors.New("an unexpected error occurred while performing snapshot operation")
+var ErrSnapshotGeneric = errors.New("an unexpected service_error occurred while performing snapshot operation")
 var ErrSnapshotValidation = errors.New("snapshot is invalid")
 var ErrSnapshotNotFound = errors.New("snapshot not found")
 
@@ -20,12 +20,12 @@ type SnapshotService interface {
 }
 
 type snapshotService struct {
-	logger     logger.Logger
+	logger     hz_logger.Logger
 	validator  SnapshotValidator
 	repository SnapshotRepository
 }
 
-func NewSnapshotService(logger logger.Logger, repository SnapshotRepository, validator SnapshotValidator) SnapshotService {
+func NewSnapshotService(logger hz_logger.Logger, repository SnapshotRepository, validator SnapshotValidator) SnapshotService {
 	return &snapshotService{
 		logger:     logger,
 		validator:  validator,

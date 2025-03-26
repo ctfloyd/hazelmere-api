@@ -3,8 +3,8 @@ package user
 import (
 	"context"
 	"errors"
-	"github.com/ctfloyd/hazelmere-api/src/internal/common/database"
-	"github.com/ctfloyd/hazelmere-api/src/internal/common/logger"
+	"github.com/ctfloyd/hazelmere-api/src/internal/database"
+	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
@@ -18,11 +18,11 @@ type UserRepository interface {
 }
 
 type mongoUserRepository struct {
-	logger     logger.Logger
+	logger     hz_logger.Logger
 	collection *mongo.Collection
 }
 
-func NewUserRepository(userCollection *mongo.Collection, logger logger.Logger) UserRepository {
+func NewUserRepository(userCollection *mongo.Collection, logger hz_logger.Logger) UserRepository {
 	return &mongoUserRepository{
 		collection: userCollection,
 		logger:     logger,

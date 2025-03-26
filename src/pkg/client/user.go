@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
+	"github.com/ctfloyd/hazelmere-commons/pkg/hz_client"
 )
 
 var ErrUserNotFound = errors.Join(ErrHazelmereClient, errors.New("user not found"))
@@ -11,10 +12,10 @@ var ErrInvalidUser = errors.Join(ErrHazelmereClient, errors.New("invalid user"))
 
 type User struct {
 	prefix string
-	client *HazelmereClient
+	client *hz_client.HttpClient
 }
 
-func newUser(client *HazelmereClient) *User {
+func newUser(client *hz_client.HttpClient) *User {
 	mappings := map[string]error{
 		api.ErrorCodeUserNotFound:    ErrUserNotFound,
 		api.ErrorCodeInvalidSnapshot: ErrInvalidUser,

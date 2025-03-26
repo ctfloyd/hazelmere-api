@@ -3,12 +3,12 @@ package user
 import (
 	"context"
 	"errors"
-	"github.com/ctfloyd/hazelmere-api/src/internal/common/database"
-	"github.com/ctfloyd/hazelmere-api/src/internal/common/logger"
+	"github.com/ctfloyd/hazelmere-api/src/internal/database"
+	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/google/uuid"
 )
 
-var ErrUserGeneric = errors.New("an error occurred while performing the user operation")
+var ErrUserGeneric = errors.New("an service_error occurred while performing the user operation")
 var ErrUserNotFound = errors.New("user not found")
 var ErrUserValidation = errors.New("user is invalid")
 var ErrRunescapeNameTracked = errors.New("runescape name tracked")
@@ -21,12 +21,12 @@ type UserService interface {
 }
 
 type userService struct {
-	logger     logger.Logger
+	logger     hz_logger.Logger
 	validator  UserValidator
 	repository UserRepository
 }
 
-func NewUserService(logger logger.Logger, repository UserRepository, validator UserValidator) UserService {
+func NewUserService(logger hz_logger.Logger, repository UserRepository, validator UserValidator) UserService {
 	return &userService{
 		logger:     logger,
 		validator:  validator,
