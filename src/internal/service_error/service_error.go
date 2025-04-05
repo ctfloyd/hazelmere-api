@@ -12,3 +12,4 @@ var InvalidSnapshot = hz_service_error.ServiceError{Code: api.ErrorCodeInvalidSn
 var SnapshotNotFound = hz_service_error.ServiceError{Code: api.ErrorCodeSnapshotNotFound, Status: http.StatusNotFound}
 var UserNotFound = hz_service_error.ServiceError{Code: api.ErrorCodeUserNotFound, Status: http.StatusNotFound}
 var RunescapeNameAlreadyTracked = hz_service_error.ServiceError{Code: api.ErrorCodeRunescapeNameAlreadyTracked, Status: http.StatusBadRequest}
+var HiscoreTimeout = hz_service_error.ServiceError{Code: api.ErrorCodeHiscoreTimeout, Status: http.StatusRequestTimeout}

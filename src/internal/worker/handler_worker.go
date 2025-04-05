@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"errors"
 	"fmt"
 	"github.com/ctfloyd/hazelmere-api/src/internal/service_error"
 	"github.com/ctfloyd/hazelmere-api/src/internal/snapshot"
@@ -37,6 +38,9 @@ func (wh *WorkerHandler) GenerateSnapshotOnDemand(w http.ResponseWriter, r *http
 
 	ss, err := wh.service.GenerateSnapshotOnDemand(ctx, userId)
 	if err != nil {
+		if errors.Is(err, ErrHiscoreTimeout) {
+			hz_handler.Error(w, service_error.HiscoreTimeout, "Osrs hiscores timed out.")
+		}
 		wh.logger.ErrorArgs(ctx, "An unexpected error occurred while performing the worker operation: %v", err)
 		hz_handler.Error(w, service_error.Internal, "An unexpected error occurred while performing the worker operation.")
 		return

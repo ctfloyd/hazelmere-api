@@ -11,7 +11,7 @@ require (
 )
 
 require (
-	github.com/ctfloyd/hazelmere-worker v0.0.4 // indirect
+	github.com/ctfloyd/hazelmere-worker v0.0.5 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect

@@ -9,6 +9,7 @@ import (
 )
 
 var ErrWorkerGeneric = errors.New("an error occurred while performing the user operation")
+var ErrHiscoreTimeout = errors.New("hiscore timeout")
 
 type WorkerService interface {
 	GenerateSnapshotOnDemand(ctx context.Context, userId string) (snapshot.HiscoreSnapshot, error)
@@ -31,6 +32,9 @@ func NewWorkerService(logger hz_logger.Logger, workerClient *worker_client.Hazel
 func (ws *workerService) GenerateSnapshotOnDemand(ctx context.Context, userId string) (snapshot.HiscoreSnapshot, error) {
 	response, err := ws.workerClient.Snapshot.GenerateSnapshotOnDemand(userId)
 	if err != nil {
+		if errors.Is(err, worker_client.ErrRunescapeHiscoreTimeout) {
+			return snapshot.HiscoreSnapshot{}, ErrHiscoreTimeout
+		}
 		return snapshot.HiscoreSnapshot{}, errors.Join(ErrWorkerGeneric, err)
 	}
 
