@@ -4,7 +4,7 @@
   },
   "clients": {
     "worker": {
-      "host": "https://hazelmere-worker.railway.internal",
+      "host": "https://hazelmere-worker.railway.internal:8080",
       "timeout": 10000,
       "retries": 0,
       "retryWaitMs": 0,
