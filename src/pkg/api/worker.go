@@ -1,5 +1,5 @@
 package api
 
 type GenerateSnapshotOnDemandResponse struct {
-	Snapshot HiscoreSnapshot
+	Snapshot HiscoreSnapshot `json:"snapshot"`
 }
