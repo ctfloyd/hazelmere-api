@@ -8,7 +8,7 @@ import (
 	"github.com/ctfloyd/hazelmere-worker/src/pkg/worker_client"
 )
 
-var ErrWorkerGeneric = errors.New("an error occurred while performing the user operation")
+var ErrWorkerGeneric = errors.New("an error occurred while performing the worker operation")
 var ErrHiscoreTimeout = errors.New("hiscore timeout")
 
 type WorkerService interface {

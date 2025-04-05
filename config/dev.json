@@ -4,7 +4,7 @@
   },
   "clients": {
     "worker": {
-      "host": "https://worker.hazelmere.xyz",
+      "host": "http://worker.hazelmere.xyz:8080",
       "timeout": 10000,
       "retries": 0,
       "retryWaitMs": 0,
