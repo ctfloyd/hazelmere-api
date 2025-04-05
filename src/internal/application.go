@@ -6,6 +6,7 @@ import (
 	"github.com/ctfloyd/hazelmere-api/src/internal/initialize"
 	"github.com/ctfloyd/hazelmere-api/src/internal/snapshot"
 	"github.com/ctfloyd/hazelmere-api/src/internal/user"
+	"github.com/ctfloyd/hazelmere-api/src/internal/worker"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_config"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_handler"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
@@ -55,8 +56,12 @@ func (app *Application) Init(logger hz_logger.Logger, config *hz_config.Config) 
 	userService := user.NewUserService(logger, userRepo, userValidator)
 	userHandler := user.NewUserHandler(logger, userService)
 
+	workerClient := initialize.InitWorkerClient(logger, config)
+	workerService := worker.NewWorkerService(logger, workerClient, snapshotService)
+	workerHandler := worker.NewWorkerHandler(logger, workerService)
+
 	logger.Info(context.TODO(), "Init router.")
-	handlers := []hz_handler.HazelmereHandler{snapshotHandler, userHandler}
+	handlers := []hz_handler.HazelmereHandler{snapshotHandler, userHandler, workerHandler}
 	for i := 0; i < len(handlers); i++ {
 		handlers[i].RegisterRoutes(app.Router, hz_handler.ApiVersionV1)
 	}

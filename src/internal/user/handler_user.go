@@ -8,7 +8,9 @@ import (
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_handler"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"net/http"
+	"time"
 )
 
 type UserHandler struct {
@@ -22,10 +24,13 @@ func NewUserHandler(logger hz_logger.Logger, service UserService) *UserHandler {
 
 func (uh *UserHandler) RegisterRoutes(mux *chi.Mux, version hz_handler.ApiVersion) {
 	if version == hz_handler.ApiVersionV1 {
-		mux.Get(fmt.Sprintf("/v1/user/{id:%s}", hz_handler.RegexUuid), uh.GetUserById)
-		mux.Get("/v1/user", uh.GetAllUsers)
-		mux.Post("/v1/user", uh.CreateUser)
-		mux.Put("/v1/user", uh.UpdateUser)
+		mux.Group(func(r chi.Router) {
+			r.Use(middleware.Timeout(200 * time.Millisecond))
+			r.Get(fmt.Sprintf("/v1/user/{id:%s}", hz_handler.RegexUuid), uh.GetUserById)
+			r.Get("/v1/user", uh.GetAllUsers)
+			r.Post("/v1/user", uh.CreateUser)
+			r.Put("/v1/user", uh.UpdateUser)
+		})
 	}
 }
 

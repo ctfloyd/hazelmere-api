@@ -2,6 +2,15 @@
   "log": {
     "level": "INFO"
   },
+  "clients": {
+    "worker": {
+      "host": "https://hazelmere-worker.railway.internal",
+      "timeout": 10000,
+      "retries": 0,
+      "retryWaitMs": 0,
+      "retryMaxWaitMs": 0
+    }
+  },
   "mongo": {
     "connection": {
       "username": "{{MONGOUSER}}",

@@ -13,6 +13,7 @@ import (
 )
 
 type SnapshotRepository interface {
+	GetSnapshotById(ctx context.Context, id string) (HiscoreSnapshotData, error)
 	GetLatestSnapshotForUser(ctx context.Context, userId string) (HiscoreSnapshotData, error)
 	GetAllSnapshotsForUser(ctx context.Context, userId string) ([]HiscoreSnapshotData, error)
 	InsertSnapshot(ctx context.Context, snapshot HiscoreSnapshotData) (HiscoreSnapshotData, error)
@@ -35,6 +36,25 @@ func (sr *mongoSnapshotRepository) InsertSnapshot(ctx context.Context, snapshot 
 	_, err := sr.collection.InsertOne(ctx, snapshot)
 	if err != nil {
 		return HiscoreSnapshotData{}, errors.Join(database.ErrGeneric, err)
+	}
+	return snapshot, nil
+}
+
+func (sr *mongoSnapshotRepository) GetSnapshotById(ctx context.Context, id string) (HiscoreSnapshotData, error) {
+	filter := bson.M{"_id": id}
+	result := sr.collection.FindOne(ctx, filter)
+	if result.Err() != nil {
+		if errors.Is(result.Err(), mongo.ErrNoDocuments) {
+			return HiscoreSnapshotData{}, errors.Join(database.ErrNotFound, result.Err())
+		}
+
+		return HiscoreSnapshotData{}, errors.Join(database.ErrGeneric, result.Err())
+	}
+
+	var snapshot HiscoreSnapshotData
+	err := result.Decode(&snapshot)
+	if err != nil {
+		return HiscoreSnapshotData{}, errors.Join(database.ErrGeneric, result.Err())
 	}
 	return snapshot, nil
 }

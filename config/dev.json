@@ -5,7 +5,7 @@
   "clients": {
     "worker": {
       "host": "https://worker.hazelmere.xyz",
-      "timeout": 1000,
+      "timeout": 10000,
       "retries": 0,
       "retryWaitMs": 0,
       "retryMaxWaitMs": 0

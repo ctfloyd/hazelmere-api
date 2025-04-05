@@ -15,6 +15,7 @@ var ErrSnapshotNotFound = errors.New("snapshot not found")
 
 type SnapshotService interface {
 	CreateSnapshot(ctx context.Context, snapshot HiscoreSnapshot) (HiscoreSnapshot, error)
+	GetSnapshotById(ctx context.Context, id string) (HiscoreSnapshot, error)
 	GetAllSnapshotsForUser(ctx context.Context, userId string) ([]HiscoreSnapshot, error)
 	GetSnapshotForUserNearestTimestamp(ctx context.Context, userId string, timestamp int64) (HiscoreSnapshot, error)
 }
@@ -39,6 +40,17 @@ func (ss *snapshotService) GetAllSnapshotsForUser(ctx context.Context, userId st
 		return nil, errors.Join(ErrSnapshotGeneric, err)
 	}
 	return MapManyDataToDomain(data), nil
+}
+
+func (ss *snapshotService) GetSnapshotById(ctx context.Context, id string) (HiscoreSnapshot, error) {
+	data, err := ss.repository.GetSnapshotById(ctx, id)
+	if err != nil {
+		if errors.Is(err, database.ErrNotFound) {
+			return HiscoreSnapshot{}, ErrSnapshotNotFound
+		}
+		return HiscoreSnapshot{}, errors.Join(ErrSnapshotGeneric, err)
+	}
+	return MapDataToDomain(data), nil
 }
 
 func (ss *snapshotService) GetSnapshotForUserNearestTimestamp(ctx context.Context, userId string, timestamp int64) (HiscoreSnapshot, error) {

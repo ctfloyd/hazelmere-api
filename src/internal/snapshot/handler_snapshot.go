@@ -8,8 +8,10 @@ import (
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_handler"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type SnapshotHandler struct {
@@ -23,9 +25,12 @@ func NewSnapshotHandler(logger hz_logger.Logger, service SnapshotService) *Snaps
 
 func (sh *SnapshotHandler) RegisterRoutes(mux *chi.Mux, version hz_handler.ApiVersion) {
 	if version == hz_handler.ApiVersionV1 {
-		mux.Get(fmt.Sprintf("/v1/snapshot/{userId:%s}", hz_handler.RegexUuid), sh.GetAllSnapshotsForUser)
-		mux.Get(fmt.Sprintf("/v1/snapshot/{userId:%s}/nearest/{timestamp}", hz_handler.RegexUuid), sh.GetSnapshotForUserNearestTimestamp)
-		mux.Post("/v1/snapshot", sh.CreateSnapshot)
+		mux.Group(func(r chi.Router) {
+			r.Use(middleware.Timeout(200 * time.Millisecond))
+			r.Get(fmt.Sprintf("/v1/snapshot/{userId:%s}", hz_handler.RegexUuid), sh.GetAllSnapshotsForUser)
+			r.Get(fmt.Sprintf("/v1/snapshot/{userId:%s}/nearest/{timestamp}", hz_handler.RegexUuid), sh.GetSnapshotForUserNearestTimestamp)
+			r.Post("/v1/snapshot", sh.CreateSnapshot)
+		})
 	}
 }
 
