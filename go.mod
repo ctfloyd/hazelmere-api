@@ -3,7 +3,7 @@ module github.com/ctfloyd/hazelmere-api
 go 1.24.0
 
 require (
-	github.com/ctfloyd/hazelmere-commons v0.0.5
+	github.com/ctfloyd/hazelmere-commons v0.0.11
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	go.mongodb.org/mongo-driver/v2 v2.1.0
@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/ctfloyd/hazelmere-worker v0.0.3 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect

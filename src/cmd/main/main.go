@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"github.com/ctfloyd/hazelmere-api/src/internal"
+	"github.com/ctfloyd/hazelmere-commons/pkg/hz_config"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
-	"net/http"
 	"os"
 	"os/signal"
 )
@@ -13,16 +13,16 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	l := hz_logger.NewZeroLogAdapater(hz_logger.LogLevelDebug)
-
-	app := internal.Application{}
-	app.Init(ctx, l)
-
-	l.Info(ctx, "Trying listen and serve 8080.")
-	err := http.ListenAndServe(":8080", app.Router)
+	config := hz_config.NewConfigWithAutomaticDetection()
+	err := config.Read()
 	if err != nil {
-		l.InfoArgs(ctx, "Failed to listen and serve on port 8080: %v", err)
+		panic(err)
 	}
 
-	defer app.Cleanup(ctx)
+	logger := hz_logger.NewZeroLogAdapater(hz_logger.LogLevelFromString(config.ValueOrPanic("log.level")))
+
+	app := internal.Application{}
+	app.Init(logger, config)
+	app.Run(ctx, logger)
+	app.Cleanup(ctx)
 }

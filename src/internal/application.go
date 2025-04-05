@@ -6,11 +6,12 @@ import (
 	"github.com/ctfloyd/hazelmere-api/src/internal/initialize"
 	"github.com/ctfloyd/hazelmere-api/src/internal/snapshot"
 	"github.com/ctfloyd/hazelmere-api/src/internal/user"
+	"github.com/ctfloyd/hazelmere-commons/pkg/hz_config"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_handler"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/go-chi/chi/v5"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"os"
+	"net/http"
 )
 
 type Application struct {
@@ -18,53 +19,57 @@ type Application struct {
 	MongoClient *mongo.Client
 }
 
-func (app *Application) Init(ctx context.Context, l hz_logger.Logger) {
-	l.Info(context.TODO(), "Init Hazelmere web service.")
+func (app *Application) Init(logger hz_logger.Logger, config *hz_config.Config) {
+	logger.Info(context.TODO(), "Init Hazelmere web service.")
 
-	router := initialize.InitRouter(l)
+	router := initialize.InitRouter(logger)
 	app.Router = router
 
-	l.Info(context.TODO(), "Init mongo.")
-
-	username := os.Getenv("MONGOUSER")
-	password := os.Getenv("MONGOPASSWORD")
-	host := os.Getenv("MONGO_URL")
+	logger.Info(context.TODO(), "Init mongo.")
 
 	c, err := initialize.MongoClient(
-		host,
-		username,
-		password,
+		config.ValueOrPanic("mongo.connection.host"),
+		config.ValueOrPanic("mongo.connection.username"),
+		config.ValueOrPanic("mongo.connection.password"),
 	)
 	if err != nil {
-		l.InfoArgs(ctx, "failed to init mc: %v", err)
+		panic(err)
 	}
 	app.MongoClient = c
 
 	f := database.NewMongoFactory(c, database.MongoFactoryConfig{
-		DatabaseName:           "hazelmere",
-		SnapshotCollectionName: "snapshot",
-		UserCollectionName:     "user",
+		DatabaseName:           config.ValueOrPanic("mongo.database.name"),
+		SnapshotCollectionName: config.ValueOrPanic("mongo.database.collections.snapshot"),
+		UserCollectionName:     config.ValueOrPanic("mongo.database.collections.user"),
 	})
 
-	sc := f.NewSnapshotCollection()
-	sr := snapshot.NewSnapshotRepository(sc, l)
-	sv := snapshot.NewSnapshotValidator()
-	ss := snapshot.NewSnapshotService(l, sr, sv)
-	sh := snapshot.NewSnapshotHandler(l, ss)
+	snapshotCollection := f.NewSnapshotCollection()
+	snapshotRepo := snapshot.NewSnapshotRepository(snapshotCollection, logger)
+	snapshotValidator := snapshot.NewSnapshotValidator()
+	snapshotService := snapshot.NewSnapshotService(logger, snapshotRepo, snapshotValidator)
+	snapshotHandler := snapshot.NewSnapshotHandler(logger, snapshotService)
 
-	uc := f.NewUserCollection()
-	ur := user.NewUserRepository(uc, l)
-	uv := user.NewUserValidator()
-	us := user.NewUserService(l, ur, uv)
-	uh := user.NewUserHandler(l, us)
+	userCollection := f.NewUserCollection()
+	userRepo := user.NewUserRepository(userCollection, logger)
+	userValidator := user.NewUserValidator()
+	userService := user.NewUserService(logger, userRepo, userValidator)
+	userHandler := user.NewUserHandler(logger, userService)
 
-	l.Info(context.TODO(), "Init router.")
-	handlers := []hz_handler.HazelmereHandler{sh, uh}
+	logger.Info(context.TODO(), "Init router.")
+	handlers := []hz_handler.HazelmereHandler{snapshotHandler, userHandler}
 	for i := 0; i < len(handlers); i++ {
 		handlers[i].RegisterRoutes(app.Router, hz_handler.ApiVersionV1)
 	}
 
-	l.Info(context.TODO(), "Done init.")
+	logger.Info(context.TODO(), "Done init.")
+}
+
+func (app *Application) Run(ctx context.Context, logger hz_logger.Logger) {
+	logger.Info(ctx, "Trying listen and serve 8080.")
+	err := http.ListenAndServe(":8080", app.Router)
+	if err != nil {
+		logger.ErrorArgs(ctx, "Failed to listen and serve on port 8080: %v", err)
+	}
 }
 
 func (app *Application) Cleanup(ctx context.Context) {

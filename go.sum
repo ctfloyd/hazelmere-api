@@ -1,6 +1,10 @@
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/ctfloyd/hazelmere-commons v0.0.5 h1:vUp3QquUTsmM/iEYfAS96HXvUYBrXakzf1hY1mxVmhU=
 github.com/ctfloyd/hazelmere-commons v0.0.5/go.mod h1:Ai01Qc07jqj3xdfVt5HlXJ4JskRutE4hhKpZNH5F28M=
+github.com/ctfloyd/hazelmere-commons v0.0.11 h1:I67KGrY81etyhZUCxFu4qyCJdl185Fcs4mbfDdkixnk=
+github.com/ctfloyd/hazelmere-commons v0.0.11/go.mod h1:Ai01Qc07jqj3xdfVt5HlXJ4JskRutE4hhKpZNH5F28M=
+github.com/ctfloyd/hazelmere-worker v0.0.3 h1:hakDXDRtrsxcIS3FF6x3n1LBDNkWigcbLL3lrGYD32Q=
+github.com/ctfloyd/hazelmere-worker v0.0.3/go.mod h1:xPNeilwBjCnloykdJv5XtbRhKIlUpc5THP4jJtZ1pD4=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

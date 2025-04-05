@@ -1,0 +1,28 @@
+{
+  "log": {
+    "level": "TRACE"
+  },
+  "clients": {
+    "worker": {
+      "host": "https://worker.hazelmere.xyz",
+      "timeout": 1000,
+      "retries": 0,
+      "retryWaitMs": 0,
+      "retryMaxWaitMs": 0
+    }
+  },
+  "mongo": {
+    "connection": {
+      "username": "{{MONGOUSER}}",
+      "password": "{{MONGOPASSWORD}}",
+      "host": "{{MONGO_URL}}"
+    },
+    "database": {
+      "name": "hazelmere",
+      "collections": {
+        "snapshot": "snapshot",
+        "user": "user"
+      }
+    }
+  }
+}

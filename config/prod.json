@@ -1,0 +1,19 @@
+{
+  "log": {
+    "level": "INFO"
+  },
+  "mongo": {
+    "connection": {
+      "username": "{{MONGOUSER}}",
+      "password": "{{MONGOPASSWORD}}",
+      "host": "{{MONGO_URL}}"
+    },
+    "database": {
+      "name": "hazelmere",
+      "collections": {
+        "snapshot": "snapshot",
+        "user": "user"
+      }
+    }
+  }
+}
