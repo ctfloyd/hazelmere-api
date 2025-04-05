@@ -19,5 +19,4 @@ func NewHazelmere(client *hz_client.HttpClient) *Hazelmere {
 		User:     newUser(client),
 		Worker:   newWorker(client),
 	}
-	t
 }
