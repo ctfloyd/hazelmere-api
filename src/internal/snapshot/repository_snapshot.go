@@ -125,6 +125,18 @@ func (sr *mongoSnapshotRepository) GetSnapshotForUserNearestTimestamp(ctx contex
 		return HiscoreSnapshotData{}, errors.Join(database.ErrGeneric, err)
 	}
 
+	if lessThan.Timestamp.IsZero() && greaterThan.Timestamp.IsZero() {
+		return HiscoreSnapshotData{}, database.ErrNotFound
+	}
+
+	if lessThan.Timestamp.IsZero() {
+		return greaterThan, nil
+	}
+
+	if greaterThan.Timestamp.IsZero() {
+		return lessThan, nil
+	}
+
 	ltDiff := timestamp.Sub(lessThan.Timestamp)
 	gtDiff := greaterThan.Timestamp.Sub(lessThan.Timestamp)
 

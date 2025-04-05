@@ -26,7 +26,7 @@ func NewSnapshotHandler(logger hz_logger.Logger, service SnapshotService) *Snaps
 func (sh *SnapshotHandler) RegisterRoutes(mux *chi.Mux, version hz_handler.ApiVersion) {
 	if version == hz_handler.ApiVersionV1 {
 		mux.Group(func(r chi.Router) {
-			r.Use(middleware.Timeout(200 * time.Millisecond))
+			r.Use(middleware.Timeout(5000 * time.Millisecond))
 			r.Get(fmt.Sprintf("/v1/snapshot/{userId:%s}", hz_handler.RegexUuid), sh.GetAllSnapshotsForUser)
 			r.Get(fmt.Sprintf("/v1/snapshot/{userId:%s}/nearest/{timestamp}", hz_handler.RegexUuid), sh.GetSnapshotForUserNearestTimestamp)
 			r.Post("/v1/snapshot", sh.CreateSnapshot)
@@ -40,7 +40,8 @@ func (sh *SnapshotHandler) GetAllSnapshotsForUser(w http.ResponseWriter, r *http
 
 	snapshots, err := sh.service.GetAllSnapshotsForUser(r.Context(), userId)
 	if err != nil {
-		hz_handler.Error(w, service_error.Internal, "An unexpected service_error occurred while getting all snapshots for user.")
+		hz_handler.Error(w, service_error.Internal, "An unexpected error occurred while getting all snapshots for user.")
+		return
 	}
 
 	response := api.GetAllSnapshotsForUser{

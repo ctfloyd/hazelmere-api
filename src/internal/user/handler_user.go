@@ -25,7 +25,7 @@ func NewUserHandler(logger hz_logger.Logger, service UserService) *UserHandler {
 func (uh *UserHandler) RegisterRoutes(mux *chi.Mux, version hz_handler.ApiVersion) {
 	if version == hz_handler.ApiVersionV1 {
 		mux.Group(func(r chi.Router) {
-			r.Use(middleware.Timeout(200 * time.Millisecond))
+			r.Use(middleware.Timeout(5000 * time.Millisecond))
 			r.Get(fmt.Sprintf("/v1/user/{id:%s}", hz_handler.RegexUuid), uh.GetUserById)
 			r.Get("/v1/user", uh.GetAllUsers)
 			r.Post("/v1/user", uh.CreateUser)
