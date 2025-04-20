@@ -24,5 +24,9 @@
         "user": "user"
       }
     }
+  },
+  "auth": {
+    "enabled": true,
+    "tokens": ["TestToken"]
   }
 }

@@ -13,9 +13,10 @@ var ErrInvalidSnapshot = errors.Join(ErrHazelmereClient, errors.New("invalid sna
 type Snapshot struct {
 	prefix string
 	client *hz_client.HttpClient
+	config HazelmereConfig
 }
 
-func newSnapshot(client *hz_client.HttpClient) *Snapshot {
+func newSnapshot(client *hz_client.HttpClient, config HazelmereConfig) *Snapshot {
 	mappings := map[string]error{
 		api.ErrorCodeSnapshotNotFound: ErrSnapshotNotFound,
 		api.ErrorCodeInvalidSnapshot:  ErrInvalidSnapshot,
@@ -31,7 +32,7 @@ func newSnapshot(client *hz_client.HttpClient) *Snapshot {
 func (ss *Snapshot) GetAllSnapshotsForUser(userId string) (api.GetAllSnapshotsForUser, error) {
 	url := fmt.Sprintf("%s/%s", ss.getBaseUrl(), userId)
 	var response api.GetAllSnapshotsForUser
-	err := ss.client.Get(url, &response)
+	err := ss.client.GetWithHeaders(url, makeHeadersFromConfig(ss.config), &response)
 	if err != nil {
 		return api.GetAllSnapshotsForUser{}, err
 	}
@@ -41,7 +42,7 @@ func (ss *Snapshot) GetAllSnapshotsForUser(userId string) (api.GetAllSnapshotsFo
 func (ss *Snapshot) GetSnapshotForUserNearestTimestamp(userId string, epochMillis int64) (api.GetSnapshotNearestTimestampResponse, error) {
 	url := fmt.Sprintf("%s/%s/nearest/%d", ss.getBaseUrl(), userId, epochMillis)
 	var response api.GetSnapshotNearestTimestampResponse
-	err := ss.client.Get(url, &response)
+	err := ss.client.GetWithHeaders(url, makeHeadersFromConfig(ss.config), &response)
 	if err != nil {
 		return api.GetSnapshotNearestTimestampResponse{}, err
 	}
@@ -51,7 +52,7 @@ func (ss *Snapshot) GetSnapshotForUserNearestTimestamp(userId string, epochMilli
 func (ss *Snapshot) CreateSnapshot(request api.CreateSnapshotRequest) (api.CreateSnapshotResponse, error) {
 	url := ss.getBaseUrl()
 	var response api.CreateSnapshotResponse
-	err := ss.client.Post(url, request, &response)
+	err := ss.client.PostWithHeaders(url, makeHeadersFromConfig(ss.config), &response)
 	if err != nil {
 		return api.CreateSnapshotResponse{}, err
 	}

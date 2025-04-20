@@ -2,13 +2,14 @@ package internal
 
 import (
 	"context"
+	"github.com/ctfloyd/hazelmere-api/src/internal/common/handler"
 	"github.com/ctfloyd/hazelmere-api/src/internal/database"
 	"github.com/ctfloyd/hazelmere-api/src/internal/initialize"
+	"github.com/ctfloyd/hazelmere-api/src/internal/middleware"
 	"github.com/ctfloyd/hazelmere-api/src/internal/snapshot"
 	"github.com/ctfloyd/hazelmere-api/src/internal/user"
 	"github.com/ctfloyd/hazelmere-api/src/internal/worker"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_config"
-	"github.com/ctfloyd/hazelmere-commons/pkg/hz_handler"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/go-chi/chi/v5"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -60,10 +61,15 @@ func (app *Application) Init(logger hz_logger.Logger, config *hz_config.Config) 
 	workerService := worker.NewWorkerService(logger, workerClient, snapshotService)
 	workerHandler := worker.NewWorkerHandler(logger, workerService)
 
+	authorizer := middleware.NewAuthorizer(
+		config.BoolValueOrPanic("auth.enabled"),
+		config.StringSliceValueOrPanic("auth.tokens"),
+	)
+
 	logger.Info(context.TODO(), "Init router.")
-	handlers := []hz_handler.HazelmereHandler{snapshotHandler, userHandler, workerHandler}
+	handlers := []handler.HazelmereHandler{snapshotHandler, userHandler, workerHandler}
 	for i := 0; i < len(handlers); i++ {
-		handlers[i].RegisterRoutes(app.Router, hz_handler.ApiVersionV1)
+		handlers[i].RegisterRoutes(app.Router, handler.ApiVersionV1, authorizer)
 	}
 
 	logger.Info(context.TODO(), "Done init.")

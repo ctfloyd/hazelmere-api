@@ -3,6 +3,14 @@ github.com/ctfloyd/hazelmere-commons v0.0.5 h1:vUp3QquUTsmM/iEYfAS96HXvUYBrXakzf
 github.com/ctfloyd/hazelmere-commons v0.0.5/go.mod h1:Ai01Qc07jqj3xdfVt5HlXJ4JskRutE4hhKpZNH5F28M=
 github.com/ctfloyd/hazelmere-commons v0.0.11 h1:I67KGrY81etyhZUCxFu4qyCJdl185Fcs4mbfDdkixnk=
 github.com/ctfloyd/hazelmere-commons v0.0.11/go.mod h1:Ai01Qc07jqj3xdfVt5HlXJ4JskRutE4hhKpZNH5F28M=
+github.com/ctfloyd/hazelmere-commons v0.0.12 h1:XPYAPjiX458MtmC0NIIfJrcoBIirWQRnOSd0RxxaIr0=
+github.com/ctfloyd/hazelmere-commons v0.0.12/go.mod h1:Ai01Qc07jqj3xdfVt5HlXJ4JskRutE4hhKpZNH5F28M=
+github.com/ctfloyd/hazelmere-commons v0.0.13 h1:+V/vnChA+YSdK37K1+PMejnqGeRZ6cB7A2e7NIeModA=
+github.com/ctfloyd/hazelmere-commons v0.0.13/go.mod h1:Ai01Qc07jqj3xdfVt5HlXJ4JskRutE4hhKpZNH5F28M=
+github.com/ctfloyd/hazelmere-commons v0.0.15 h1:BV7DE2qmSpAE1HHr8bi79EJUGOA2cCR1CkpUpbxJwTM=
+github.com/ctfloyd/hazelmere-commons v0.0.15/go.mod h1:Ai01Qc07jqj3xdfVt5HlXJ4JskRutE4hhKpZNH5F28M=
+github.com/ctfloyd/hazelmere-commons v0.0.16 h1:IhOMXJO6xyt+13+ATPjfAGwb6eB5CF2xNSqcHjy9EG4=
+github.com/ctfloyd/hazelmere-commons v0.0.16/go.mod h1:Ai01Qc07jqj3xdfVt5HlXJ4JskRutE4hhKpZNH5F28M=
 github.com/ctfloyd/hazelmere-worker v0.0.3 h1:hakDXDRtrsxcIS3FF6x3n1LBDNkWigcbLL3lrGYD32Q=
 github.com/ctfloyd/hazelmere-worker v0.0.3/go.mod h1:xPNeilwBjCnloykdJv5XtbRhKIlUpc5THP4jJtZ1pD4=
 github.com/ctfloyd/hazelmere-worker v0.0.4 h1:C9gb+FSYvJ5m/vwpXozkWdjx4F0HVVB1oWQVAH0og7g=

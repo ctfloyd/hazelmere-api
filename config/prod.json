@@ -24,5 +24,9 @@
         "user": "user"
       }
     }
+  },
+  "auth": {
+    "enabled": false,
+    "token": "{{API_TOKEN}}"
   }
 }

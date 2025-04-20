@@ -13,3 +13,4 @@ var SnapshotNotFound = hz_service_error.ServiceError{Code: api.ErrorCodeSnapshot
 var UserNotFound = hz_service_error.ServiceError{Code: api.ErrorCodeUserNotFound, Status: http.StatusNotFound}
 var RunescapeNameAlreadyTracked = hz_service_error.ServiceError{Code: api.ErrorCodeRunescapeNameAlreadyTracked, Status: http.StatusBadRequest}
 var HiscoreTimeout = hz_service_error.ServiceError{Code: api.ErrorCodeHiscoreTimeout, Status: http.StatusRequestTimeout}
+var Unauthorized = hz_service_error.ServiceError{Code: api.ErrorCodeUnauthorized, Status: http.StatusUnauthorized}

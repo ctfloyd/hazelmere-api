@@ -3,13 +3,15 @@ package worker
 import (
 	"errors"
 	"fmt"
+	"github.com/ctfloyd/hazelmere-api/src/internal/common/handler"
+	"github.com/ctfloyd/hazelmere-api/src/internal/middleware"
 	"github.com/ctfloyd/hazelmere-api/src/internal/service_error"
 	"github.com/ctfloyd/hazelmere-api/src/internal/snapshot"
 	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_handler"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chiWare "github.com/go-chi/chi/v5/middleware"
 	"net/http"
 	"time"
 )
@@ -23,10 +25,11 @@ func NewWorkerHandler(logger hz_logger.Logger, service WorkerService) *WorkerHan
 	return &WorkerHandler{logger, service}
 }
 
-func (wh *WorkerHandler) RegisterRoutes(mux *chi.Mux, version hz_handler.ApiVersion) {
-	if version == hz_handler.ApiVersionV1 {
+func (wh *WorkerHandler) RegisterRoutes(mux *chi.Mux, version handler.ApiVersion, authorizer *middleware.Authorizer) {
+	if version == handler.ApiVersionV1 {
 		mux.Group(func(r chi.Router) {
-			r.Use(middleware.Timeout(10 * time.Second))
+			r.Use(chiWare.Timeout(10 * time.Second))
+			r.Use(authorizer.Authorize)
 			r.Get(fmt.Sprintf("/v1/worker/snapshot/on-demand/{userId:%s}", hz_handler.RegexUuid), wh.GenerateSnapshotOnDemand)
 		})
 	}

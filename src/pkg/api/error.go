@@ -8,4 +8,5 @@ const (
 	ErrorCodeUserNotFound                = "USER_NOT_FOUND"
 	ErrorCodeRunescapeNameAlreadyTracked = "RUNESCAPE_NAME_ALREADY_TRACKED"
 	ErrorCodeHiscoreTimeout              = "OSRS_HISCORE_TIMEOUT"
+	ErrorCodeUnauthorized                = "UNAUTHORIZED"
 )

@@ -3,12 +3,14 @@ package user
 import (
 	"errors"
 	"fmt"
+	"github.com/ctfloyd/hazelmere-api/src/internal/common/handler"
+	"github.com/ctfloyd/hazelmere-api/src/internal/middleware"
 	"github.com/ctfloyd/hazelmere-api/src/internal/service_error"
 	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_handler"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chiWare "github.com/go-chi/chi/v5/middleware"
 	"net/http"
 	"time"
 )
@@ -22,14 +24,17 @@ func NewUserHandler(logger hz_logger.Logger, service UserService) *UserHandler {
 	return &UserHandler{logger, service}
 }
 
-func (uh *UserHandler) RegisterRoutes(mux *chi.Mux, version hz_handler.ApiVersion) {
-	if version == hz_handler.ApiVersionV1 {
+func (uh *UserHandler) RegisterRoutes(mux *chi.Mux, version handler.ApiVersion, authorizer *middleware.Authorizer) {
+	if version == handler.ApiVersionV1 {
 		mux.Group(func(r chi.Router) {
-			r.Use(middleware.Timeout(5000 * time.Millisecond))
+			r.Use(chiWare.Timeout(5000 * time.Millisecond))
 			r.Get(fmt.Sprintf("/v1/user/{id:%s}", hz_handler.RegexUuid), uh.GetUserById)
 			r.Get("/v1/user", uh.GetAllUsers)
-			r.Post("/v1/user", uh.CreateUser)
-			r.Put("/v1/user", uh.UpdateUser)
+			r.Group(func(secure chi.Router) {
+				secure.Use(authorizer.Authorize)
+				secure.Post("/v1/user", uh.CreateUser)
+				secure.Put("/v1/user", uh.UpdateUser)
+			})
 		})
 	}
 }
