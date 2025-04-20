@@ -25,6 +25,14 @@ type User struct {
 	TrackingStatus TrackingStatus `json:"trackingStatus"`
 }
 
+func (u *User) IsTrackingEnabled() bool {
+	return u.TrackingStatus == TrackingStatusEnabled
+}
+
+func (u *User) IsTrackingDisabled() bool {
+	return u.TrackingStatus == TrackingStatusDisabled
+}
+
 type GetAllUsersResponse struct {
 	Users []User `json:"users"`
 }
