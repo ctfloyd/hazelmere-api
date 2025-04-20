@@ -26,6 +26,7 @@ func newSnapshot(client *hz_client.HttpClient, config HazelmereConfig) *Snapshot
 	return &Snapshot{
 		prefix: "snapshot",
 		client: client,
+		config: config,
 	}
 }
 
@@ -52,7 +53,7 @@ func (ss *Snapshot) GetSnapshotForUserNearestTimestamp(userId string, epochMilli
 func (ss *Snapshot) CreateSnapshot(request api.CreateSnapshotRequest) (api.CreateSnapshotResponse, error) {
 	url := ss.getBaseUrl()
 	var response api.CreateSnapshotResponse
-	err := ss.client.PostWithHeaders(url, makeHeadersFromConfig(ss.config), &response)
+	err := ss.client.PostWithHeaders(url, makeHeadersFromConfig(ss.config), request, &response)
 	if err != nil {
 		return api.CreateSnapshotResponse{}, err
 	}
