@@ -64,6 +64,7 @@ func (app *Application) Init(logger hz_logger.Logger, config *hz_config.Config) 
 	authorizer := middleware.NewAuthorizer(
 		config.BoolValueOrPanic("auth.enabled"),
 		config.StringSliceValueOrPanic("auth.tokens"),
+		logger,
 	)
 
 	logger.Info(context.TODO(), "Init router.")
