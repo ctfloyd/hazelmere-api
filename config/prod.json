@@ -27,6 +27,6 @@
   },
   "auth": {
     "enabled": false,
-    "token": "{{API_TOKEN}}"
+    "tokens": ["{{API_TOKEN}}"]
   }
 }
