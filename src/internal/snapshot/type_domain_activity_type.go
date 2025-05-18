@@ -110,6 +110,7 @@ const (
 	ActivityTypeVetion                       ActivityType = "VETION"
 	ActivityTypeVorkath                      ActivityType = "VORKATH"
 	ActivityTypeWintertodt                   ActivityType = "WINTERTODT"
+	ActivityTypeYama                         ActivityType = "YAMA"
 	ActivityTypeZalcano                      ActivityType = "ZALCANO"
 	ActivityTypeZulrah                       ActivityType = "ZULRAH"
 )
@@ -229,6 +230,7 @@ var AllBossActivityTypes = []ActivityType{
 	ActivityTypeVetion,
 	ActivityTypeVorkath,
 	ActivityTypeWintertodt,
+	ActivityTypeYama,
 	ActivityTypeZalcano,
 	ActivityTypeZulrah,
 	ActivityTypeUnknown,
@@ -342,6 +344,7 @@ var AllActivityTypes = []ActivityType{
 	ActivityTypeVetion,
 	ActivityTypeVorkath,
 	ActivityTypeWintertodt,
+	ActivityTypeYama,
 	ActivityTypeZalcano,
 	ActivityTypeZulrah,
 }
