@@ -30,7 +30,7 @@ func (sv *snapshotValidator) ValidateSnapshot(snapshot HiscoreSnapshot) error {
 	}
 
 	for _, sk := range snapshot.Skills {
-		if !slices.Contains(AllSkillActivityTypes, sk.ActivityType) {
+		if sk.ActivityType != ActivityTypeUnknown && !slices.Contains(AllSkillActivityTypes, sk.ActivityType) {
 			return errors.New(string(sk.ActivityType) + " is not a skill activity type")
 		}
 	}
@@ -40,7 +40,7 @@ func (sv *snapshotValidator) ValidateSnapshot(snapshot HiscoreSnapshot) error {
 	}
 
 	for _, sk := range snapshot.Bosses {
-		if !slices.Contains(AllBossActivityTypes, sk.ActivityType) {
+		if sk.ActivityType != ActivityTypeUnknown && !slices.Contains(AllBossActivityTypes, sk.ActivityType) {
 			return errors.New(string(sk.ActivityType) + " is not a boss activity type")
 		}
 	}
@@ -50,7 +50,7 @@ func (sv *snapshotValidator) ValidateSnapshot(snapshot HiscoreSnapshot) error {
 	}
 
 	for _, sk := range snapshot.Activities {
-		if !slices.Contains(AllActivityActivityTypes, sk.ActivityType) {
+		if sk.ActivityType != ActivityTypeUnknown && !slices.Contains(AllActivityActivityTypes, sk.ActivityType) {
 			return errors.New(string(sk.ActivityType) + " is not an activity activity type")
 		}
 	}

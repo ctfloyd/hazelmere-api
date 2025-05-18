@@ -140,7 +140,6 @@ var AllSkillActivityTypes = []ActivityType{
 	ActivityTypeRunecraft,
 	ActivityTypeHunter,
 	ActivityTypeConstruction,
-	ActivityTypeUnknown,
 }
 
 var AllActivityActivityTypes = []ActivityType{
@@ -163,7 +162,6 @@ var AllActivityActivityTypes = []ActivityType{
 	ActivityTypeRiftsclosed,
 	ActivityTypeColosseumGlory,
 	ActivityTypeCollectionsLogged,
-	ActivityTypeUnknown,
 }
 
 var AllBossActivityTypes = []ActivityType{
@@ -233,7 +231,6 @@ var AllBossActivityTypes = []ActivityType{
 	ActivityTypeYama,
 	ActivityTypeZalcano,
 	ActivityTypeZulrah,
-	ActivityTypeUnknown,
 }
 
 var AllActivityTypes = []ActivityType{
