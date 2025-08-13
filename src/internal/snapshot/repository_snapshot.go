@@ -138,7 +138,7 @@ func (sr *mongoSnapshotRepository) GetSnapshotForUserNearestTimestamp(ctx contex
 	}
 
 	ltDiff := timestamp.Sub(lessThan.Timestamp)
-	gtDiff := greaterThan.Timestamp.Sub(lessThan.Timestamp)
+	gtDiff := greaterThan.Timestamp.Sub(timestamp)
 
 	if ltDiff < gtDiff {
 		return lessThan, nil
