@@ -6,6 +6,7 @@ func MapCreateUserRequestToDomainUser(request api.CreateUserRequest) User {
 	return User{
 		RunescapeName:  request.RunescapeName,
 		TrackingStatus: TrackingStatusFromValue(string(request.TrackingStatus)),
+		AccountType:    AccountTypeFromValue(string(request.AccountType)),
 	}
 }
 
@@ -14,8 +15,8 @@ func MapUpdateUserRequestToDomainUser(request api.UpdateUserRequest) User {
 		Id:             request.Id,
 		RunescapeName:  request.RunescapeName,
 		TrackingStatus: TrackingStatusFromValue(string(request.TrackingStatus)),
+		AccountType:    AccountTypeFromValue(string(request.AccountType)),
 	}
-
 }
 
 func MapManyDomainToApi(users []User) []api.User {
@@ -31,6 +32,7 @@ func MapDomainToApi(user User) api.User {
 		Id:             user.Id,
 		RunescapeName:  user.RunescapeName,
 		TrackingStatus: api.TrackingStatusFromValue(string(user.TrackingStatus)),
+		AccountType:    api.AccountTypeFromValue(string(user.AccountType)),
 	}
 }
 
@@ -39,6 +41,7 @@ func MapDomainToData(user User) UserData {
 		Id:             user.Id,
 		RunescapeName:  user.RunescapeName,
 		TrackingStatus: string(user.TrackingStatus),
+		AccountType:    string(user.AccountType),
 	}
 }
 
@@ -55,5 +58,6 @@ func MapDataToDomain(userData UserData) User {
 		Id:             userData.Id,
 		RunescapeName:  userData.RunescapeName,
 		TrackingStatus: TrackingStatusFromValue(userData.TrackingStatus),
+		AccountType:    AccountTypeFromValue(userData.AccountType),
 	}
 }
