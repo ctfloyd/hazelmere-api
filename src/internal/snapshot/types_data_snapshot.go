@@ -3,12 +3,13 @@ package snapshot
 import "time"
 
 type HiscoreSnapshotData struct {
-	Id         string                 `bson:"_id"`
-	UserId     string                 `bson:"userId"`
-	Timestamp  time.Time              `bson:"timestamp"`
-	Skills     []SkillSnapshotData    `bson:"skills"`
-	Bosses     []BossSnapshotData     `bson:"bosses"`
-	Activities []ActivitySnapshotData `bson:"activities"`
+	Id                      string                 `bson:"_id"`
+	UserId                  string                 `bson:"userId"`
+	Timestamp               time.Time              `bson:"timestamp"`
+	Skills                  []SkillSnapshotData    `bson:"skills"`
+	Bosses                  []BossSnapshotData     `bson:"bosses"`
+	Activities              []ActivitySnapshotData `bson:"activities"`
+	OverallExperienceChange int                    `bson:"overallExperienceChange"`
 }
 
 type SkillSnapshotData struct {

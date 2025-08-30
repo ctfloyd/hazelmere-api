@@ -50,7 +50,6 @@ func (ss *snapshotService) GetSnapshotInterval(ctx context.Context, userId strin
 	}
 
 	snapshots := MapManyDataToDomain(data)
-	//snapshots = filterUnchangedSnapshots(snapshots)
 
 	return snapshots, nil
 }
@@ -96,6 +95,14 @@ func (ss *snapshotService) CreateSnapshot(ctx context.Context, snapshot HiscoreS
 	if err != nil {
 		return HiscoreSnapshot{}, errors.Join(ErrSnapshotValidation, err)
 	}
+
+	previousSnapshot, err := ss.GetSnapshotForUserNearestTimestamp(ctx, snapshot.UserId, time.Now().Unix())
+	if err != nil {
+		return HiscoreSnapshot{}, errors.Join(ErrSnapshotGeneric, err)
+	}
+
+	dataSnapshot := MapDomainToData(snapshot)
+	dataSnapshot.OverallExperienceChange = snapshot.GetSkill(ActivityTypeOverall).Experience - previousSnapshot.GetSkill(ActivityTypeOverall).Experience
 
 	data, err := ss.repository.InsertSnapshot(ctx, MapDomainToData(snapshot))
 	if err != nil {
