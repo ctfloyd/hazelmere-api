@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"github.com/ctfloyd/hazelmere-api/src/internal/common/handler"
+	"github.com/ctfloyd/hazelmere-api/src/internal/common/health"
 	"github.com/ctfloyd/hazelmere-api/src/internal/database"
 	"github.com/ctfloyd/hazelmere-api/src/internal/initialize"
 	"github.com/ctfloyd/hazelmere-api/src/internal/middleware"
@@ -61,6 +62,8 @@ func (app *Application) Init(logger hz_logger.Logger, config *hz_config.Config) 
 	workerService := worker.NewWorkerService(logger, workerClient, snapshotService)
 	workerHandler := worker.NewWorkerHandler(logger, workerService)
 
+	healthHandler := health.NewHealthHandler(logger)
+
 	authorizer := middleware.NewAuthorizer(
 		config.BoolValueOrPanic("auth.enabled"),
 		config.StringSliceValueOrPanic("auth.tokens"),
@@ -68,7 +71,7 @@ func (app *Application) Init(logger hz_logger.Logger, config *hz_config.Config) 
 	)
 
 	logger.Info(context.TODO(), "Init router.")
-	handlers := []handler.HazelmereHandler{snapshotHandler, userHandler, workerHandler}
+	handlers := []handler.HazelmereHandler{healthHandler, snapshotHandler, userHandler, workerHandler}
 	for i := 0; i < len(handlers); i++ {
 		handlers[i].RegisterRoutes(app.Router, handler.ApiVersionV1, authorizer)
 	}
