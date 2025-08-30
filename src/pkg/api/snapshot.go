@@ -47,3 +47,13 @@ type GetSnapshotNearestTimestampResponse struct {
 type GetAllSnapshotsForUser struct {
 	Snapshots []HiscoreSnapshot `json:"snapshots"`
 }
+
+type GetSnapshotIntervalRequest struct {
+	UserId    string    `json:"userId"`
+	StartTime time.Time `json:"startTime"`
+	EndTime   time.Time `json:"endTime"`
+}
+
+type GetSnapshotIntervalResponse struct {
+	Snapshots []HiscoreSnapshot `json:"snapshots"`
+}

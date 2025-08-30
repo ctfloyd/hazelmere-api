@@ -15,6 +15,7 @@ import (
 type SnapshotRepository interface {
 	GetSnapshotById(ctx context.Context, id string) (HiscoreSnapshotData, error)
 	GetLatestSnapshotForUser(ctx context.Context, userId string) (HiscoreSnapshotData, error)
+	GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time) ([]HiscoreSnapshotData, error)
 	GetAllSnapshotsForUser(ctx context.Context, userId string) ([]HiscoreSnapshotData, error)
 	InsertSnapshot(ctx context.Context, snapshot HiscoreSnapshotData) (HiscoreSnapshotData, error)
 	GetSnapshotForUserNearestTimestamp(ctx context.Context, userId string, timestamp time.Time) (HiscoreSnapshotData, error)
@@ -30,6 +31,28 @@ func NewSnapshotRepository(snapshotCollection *mongo.Collection, logger hz_logge
 		collection: snapshotCollection,
 		logger:     logger,
 	}
+}
+
+func (sr *mongoSnapshotRepository) GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time) ([]HiscoreSnapshotData, error) {
+	filter := bson.M{
+		"userId": userId,
+		"timestamp": bson.M{
+			"$gte": startTime,
+			"$lte": endTime,
+		},
+	}
+
+	cursor, err := sr.collection.Find(ctx, filter)
+	if err != nil {
+		return []HiscoreSnapshotData{}, errors.Join(database.ErrGeneric, err)
+	}
+
+	var results []HiscoreSnapshotData
+	if err = cursor.All(ctx, &results); err != nil {
+		return []HiscoreSnapshotData{}, errors.Join(database.ErrGeneric, err)
+	}
+
+	return results, nil
 }
 
 func (sr *mongoSnapshotRepository) InsertSnapshot(ctx context.Context, snapshot HiscoreSnapshotData) (HiscoreSnapshotData, error) {

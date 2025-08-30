@@ -30,6 +30,7 @@ func (sh *SnapshotHandler) RegisterRoutes(mux *chi.Mux, version handler.ApiVersi
 		mux.Group(func(r chi.Router) {
 			r.Use(chiWare.Timeout(5000 * time.Millisecond))
 			r.Get(fmt.Sprintf("/v1/snapshot/{userId:%s}/nearest/{timestamp}", hz_handler.RegexUuid), sh.GetSnapshotForUserNearestTimestamp)
+			r.Post(fmt.Sprintf("/v1/snapshot/interval"), sh.GetSnapshotInterval)
 			r.Group(func(secure chi.Router) {
 				secure.Use(authorizer.Authorize)
 				secure.Get(fmt.Sprintf("/v1/snapshot/{userId:%s}", hz_handler.RegexUuid), sh.GetAllSnapshotsForUser)
@@ -37,6 +38,30 @@ func (sh *SnapshotHandler) RegisterRoutes(mux *chi.Mux, version handler.ApiVersi
 			})
 		})
 	}
+}
+
+func (sh *SnapshotHandler) GetSnapshotInterval(w http.ResponseWriter, r *http.Request) {
+	var intervalRequest api.GetSnapshotIntervalRequest
+	if ok := hz_handler.ReadBody(w, r, &intervalRequest); !ok {
+		return
+	}
+
+	sh.logger.InfoArgs(r.Context(), "Getting snapshot interval: %v", intervalRequest)
+	snapshots, err := sh.service.GetSnapshotInterval(r.Context(), intervalRequest.UserId, intervalRequest.StartTime, intervalRequest.EndTime)
+	if err != nil {
+		if errors.Is(err, ErrInvalidIntervalRequest) {
+			hz_handler.Error(w, service_error.BadRequest, err.Error())
+		} else {
+			hz_handler.Error(w, service_error.Internal, "An unexpected error occurred while getting snapshot interval.")
+		}
+		return
+	}
+
+	response := api.GetSnapshotIntervalResponse{
+		Snapshots: MapManyDomainToApi(snapshots),
+	}
+
+	hz_handler.Ok(w, response)
 }
 
 func (sh *SnapshotHandler) GetAllSnapshotsForUser(w http.ResponseWriter, r *http.Request) {
