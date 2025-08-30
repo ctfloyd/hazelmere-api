@@ -50,7 +50,9 @@ func (ss *snapshotService) GetSnapshotInterval(ctx context.Context, userId strin
 	}
 
 	snapshots := MapManyDataToDomain(data)
-	return filterUnchangedSnapshots(snapshots), nil
+	//snapshots = filterUnchangedSnapshots(snapshots)
+
+	return snapshots, nil
 }
 
 func (ss *snapshotService) GetAllSnapshotsForUser(ctx context.Context, userId string) ([]HiscoreSnapshot, error) {

@@ -34,15 +34,77 @@ func NewSnapshotRepository(snapshotCollection *mongo.Collection, logger hz_logge
 }
 
 func (sr *mongoSnapshotRepository) GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time) ([]HiscoreSnapshotData, error) {
-	filter := bson.M{
-		"userId": userId,
-		"timestamp": bson.M{
-			"$gte": startTime,
-			"$lte": endTime,
+	pipeline := []bson.M{
+		// Stage 1: Match snapshots for the user within time range
+		{
+			"$match": bson.M{
+				"userId": userId,
+				"timestamp": bson.M{
+					"$gte": startTime,
+					"$lte": endTime,
+				},
+			},
+		},
+		// Stage 2: Sort by timestamp to ensure proper ordering
+		{
+			"$sort": bson.M{"timestamp": 1},
+		},
+		// Stage 3: Add field with OVERALL skill experience value
+		{
+			"$addFields": bson.M{
+				"overallExperience": bson.M{
+					"$let": bson.M{
+						"vars": bson.M{
+							"overallSkill": bson.M{
+								"$arrayElemAt": bson.A{
+									bson.M{
+										"$filter": bson.M{
+											"input": "$skills",
+											"cond":  bson.M{"$eq": bson.A{"$$this.activityType", "OVERALL"}},
+										},
+									},
+									0,
+								},
+							},
+						},
+						"in": "$$overallSkill.experience",
+					},
+				},
+			},
+		},
+		// Stage 4: Add previous document using $setWindowFields
+		{
+			"$setWindowFields": bson.M{
+				"sortBy": bson.M{"timestamp": 1},
+				"output": bson.M{
+					"prevOverallExperience": bson.M{
+						"$shift": bson.M{
+							"output": "$overallExperience",
+							"by":     -1,
+						},
+					},
+				},
+			},
+		},
+		// Stage 5: Filter to only include documents where experience changed
+		{
+			"$match": bson.M{
+				"$or": bson.A{
+					bson.M{"prevOverallExperience": bson.M{"$exists": false}}, // First document
+					bson.M{"$expr": bson.M{"$ne": bson.A{"$overallExperience", "$prevOverallExperience"}}}, // Changed experience
+				},
+			},
+		},
+		// Stage 6: Remove temporary fields
+		{
+			"$project": bson.M{
+				"overallExperience":     0,
+				"prevOverallExperience": 0,
+			},
 		},
 	}
 
-	cursor, err := sr.collection.Find(ctx, filter)
+	cursor, err := sr.collection.Aggregate(ctx, pipeline)
 	if err != nil {
 		return []HiscoreSnapshotData{}, errors.Join(database.ErrGeneric, err)
 	}

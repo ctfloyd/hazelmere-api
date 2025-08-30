@@ -50,8 +50,10 @@ func (sh *SnapshotHandler) GetSnapshotInterval(w http.ResponseWriter, r *http.Re
 	snapshots, err := sh.service.GetSnapshotInterval(r.Context(), intervalRequest.UserId, intervalRequest.StartTime, intervalRequest.EndTime)
 	if err != nil {
 		if errors.Is(err, ErrInvalidIntervalRequest) {
+			sh.logger.WarnArgs(r.Context(), "Invalid snapshot interval request: %+v", err)
 			hz_handler.Error(w, service_error.BadRequest, err.Error())
 		} else {
+			sh.logger.ErrorArgs(r.Context(), "An unexpected error occurred while getting snapshot interval: %+v", err)
 			hz_handler.Error(w, service_error.Internal, "An unexpected error occurred while getting snapshot interval.")
 		}
 		return
