@@ -34,19 +34,86 @@ func NewSnapshotRepository(snapshotCollection *mongo.Collection, logger hz_logge
 }
 
 func (sr *mongoSnapshotRepository) GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time) ([]HiscoreSnapshotData, error) {
-	filter := bson.M{
-		"userId": userId,
-		"timestamp": bson.M{
-			"$gte": startTime,
-			"$lte": endTime,
+	pipeline := []bson.M{
+		// Stage 1: Match snapshots for user within time range with experience changes
+		{
+			"$match": bson.M{
+				"userId": userId,
+				"timestamp": bson.M{
+					"$gte": startTime,
+					"$lte": endTime,
+				},
+				"overallExperienceChange": bson.M{
+					"$ne": 0, // Only snapshots where experience actually changed
+				},
+			},
 		},
-		"overallExperienceChange": bson.M{
-			"$ne": 0, // Only return snapshots where experience actually changed
+		// Stage 2: Add a field for the date (year-month-day) to group by
+		{
+			"$addFields": bson.M{
+				"dateOnly": bson.M{
+					"$dateToString": bson.M{
+						"format": "%Y-%m-%d",
+						"date":   "$timestamp",
+					},
+				},
+				"overallExperience": bson.M{
+					"$let": bson.M{
+						"vars": bson.M{
+							"overallSkill": bson.M{
+								"$arrayElemAt": bson.A{
+									bson.M{
+										"$filter": bson.M{
+											"input": "$skills",
+											"cond":  bson.M{"$eq": bson.A{"$$this.activityType", "OVERALL"}},
+										},
+									},
+									0,
+								},
+							},
+						},
+						"in": "$$overallSkill.experience",
+					},
+				},
+			},
+		},
+		// Stage 3: Sort by date and overall experience (highest first within each day)
+		{
+			"$sort": bson.M{
+				"dateOnly":          1,
+				"overallExperience": -1, // Highest experience first
+				"timestamp":         -1, // Most recent timestamp as tiebreaker
+			},
+		},
+		// Stage 4: Group by date and take the first (highest experience) document
+		{
+			"$group": bson.M{
+				"_id": "$dateOnly",
+				"snapshot": bson.M{
+					"$first": "$$ROOT", // Take the entire document
+				},
+			},
+		},
+		// Stage 5: Replace root with the snapshot document and remove temporary fields
+		{
+			"$replaceRoot": bson.M{
+				"newRoot": "$snapshot",
+			},
+		},
+		// Stage 6: Remove temporary fields and sort by timestamp
+		{
+			"$project": bson.M{
+				"dateOnly":          0,
+				"overallExperience": 0,
+			},
+		},
+		// Stage 7: Final sort by timestamp
+		{
+			"$sort": bson.M{"timestamp": 1},
 		},
 	}
 
-	opts := options.Find().SetSort(bson.M{"timestamp": 1})
-	cursor, err := sr.collection.Find(ctx, filter, opts)
+	cursor, err := sr.collection.Aggregate(ctx, pipeline)
 	if err != nil {
 		return []HiscoreSnapshotData{}, errors.Join(database.ErrGeneric, err)
 	}
