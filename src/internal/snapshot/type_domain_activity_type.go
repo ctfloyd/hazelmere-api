@@ -42,6 +42,7 @@ const (
 	ActivityTypeClueScrollshard              ActivityType = "CLUE_SCROLLS_HARD"
 	ActivityTypeClueScrollselite             ActivityType = "CLUE_SCROLLS_ELITE"
 	ActivityTypeClueScrollsmaster            ActivityType = "CLUE_SCROLLS_MASTER"
+	ActivityTypeGridPoints                   ActivityType = "GRID_POINTS"
 	ActivityTypeLMSRank                      ActivityType = "LMS__RANK"
 	ActivityTypePvPArenaRank                 ActivityType = "PVP_ARENA__RANK"
 	ActivityTypeSoulWarsZeal                 ActivityType = "SOUL_WARS_ZEAL"
@@ -69,6 +70,7 @@ const (
 	ActivityTypeDagannothRex                 ActivityType = "DAGANNOTH_REX"
 	ActivityTypeDagannothSupreme             ActivityType = "DAGANNOTH_SUPREME"
 	ActivityTypeDerangedArchaeologist        ActivityType = "DERANGED_ARCHAEOLOGIST"
+	ActivityTypeDoomOfMokhaiotl              ActivityType = "DOOM_OF_MOKHAIOTL"
 	ActivityTypeDukeSucellus                 ActivityType = "DUKE_SUCELLUS"
 	ActivityTypeGeneralGraardor              ActivityType = "GENERAL_GRAARDOR"
 	ActivityTypeGiantMole                    ActivityType = "GIANT_MOLE"
@@ -89,6 +91,7 @@ const (
 	ActivityTypeSarachnis                    ActivityType = "SARACHNIS"
 	ActivityTypeScorpia                      ActivityType = "SCORPIA"
 	ActivityTypeScurrius                     ActivityType = "SCURRIUS"
+	ActivityTypeShellbaneGryphon             ActivityType = "SHELLBANE_GRYPHON"
 	ActivityTypeSkotizo                      ActivityType = "SKOTIZO"
 	ActivityTypeSolHeredit                   ActivityType = "SOL_HEREDIT"
 	ActivityTypeSpindel                      ActivityType = "SPINDEL"
@@ -158,6 +161,7 @@ var AllActivityActivityTypes = []ActivityType{
 	ActivityTypeClueScrollshard,
 	ActivityTypeClueScrollselite,
 	ActivityTypeClueScrollsmaster,
+	ActivityTypeGridPoints,
 	ActivityTypeLMSRank,
 	ActivityTypePvPArenaRank,
 	ActivityTypeSoulWarsZeal,
@@ -188,6 +192,7 @@ var AllBossActivityTypes = []ActivityType{
 	ActivityTypeDagannothRex,
 	ActivityTypeDagannothSupreme,
 	ActivityTypeDerangedArchaeologist,
+	ActivityTypeDoomOfMokhaiotl,
 	ActivityTypeDukeSucellus,
 	ActivityTypeGeneralGraardor,
 	ActivityTypeGiantMole,
@@ -208,6 +213,7 @@ var AllBossActivityTypes = []ActivityType{
 	ActivityTypeSarachnis,
 	ActivityTypeScorpia,
 	ActivityTypeScurrius,
+	ActivityTypeShellbaneGryphon,
 	ActivityTypeSkotizo,
 	ActivityTypeSolHeredit,
 	ActivityTypeSpindel,
@@ -275,6 +281,7 @@ var AllActivityTypes = []ActivityType{
 	ActivityTypeClueScrollshard,
 	ActivityTypeClueScrollselite,
 	ActivityTypeClueScrollsmaster,
+	ActivityTypeGridPoints,
 	ActivityTypeLMSRank,
 	ActivityTypePvPArenaRank,
 	ActivityTypeSoulWarsZeal,
@@ -302,6 +309,7 @@ var AllActivityTypes = []ActivityType{
 	ActivityTypeDagannothRex,
 	ActivityTypeDagannothSupreme,
 	ActivityTypeDerangedArchaeologist,
+	ActivityTypeDoomOfMokhaiotl,
 	ActivityTypeDukeSucellus,
 	ActivityTypeGeneralGraardor,
 	ActivityTypeGiantMole,
@@ -322,6 +330,7 @@ var AllActivityTypes = []ActivityType{
 	ActivityTypeSarachnis,
 	ActivityTypeScorpia,
 	ActivityTypeScurrius,
+	ActivityTypeShellbaneGryphon,
 	ActivityTypeSkotizo,
 	ActivityTypeSolHeredit,
 	ActivityTypeSpindel,
