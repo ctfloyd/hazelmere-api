@@ -261,6 +261,7 @@ var AllActivityTypes = []ActivityType{
 	ActivityTypeRunecraft,
 	ActivityTypeHunter,
 	ActivityTypeConstruction,
+	ActivityTypeSailing,
 	ActivityTypeLeaguePoints,
 	ActivityTypeDeadmanPoints,
 	ActivityTypeBountyHunterHunter,
