@@ -28,6 +28,7 @@ const (
 	ActivityTypeRunecraft                    ActivityType = "RUNECRAFT"
 	ActivityTypeHunter                       ActivityType = "HUNTER"
 	ActivityTypeConstruction                 ActivityType = "CONSTRUCTION"
+	ActivityTypeSailing                      ActivityType = "SAILING"
 	ActivityTypeLeaguePoints                 ActivityType = "LEAGUE_POINTS"
 	ActivityTypeDeadmanPoints                ActivityType = "DEADMAN_POINTS"
 	ActivityTypeBountyHunterHunter           ActivityType = "BOUNTY_HUNTER__HUNTER"
@@ -140,6 +141,7 @@ var AllSkillActivityTypes = []ActivityType{
 	ActivityTypeRunecraft,
 	ActivityTypeHunter,
 	ActivityTypeConstruction,
+	ActivityTypeSailing,
 }
 
 var AllActivityActivityTypes = []ActivityType{
@@ -259,6 +261,7 @@ var AllActivityTypes = []ActivityType{
 	ActivityTypeRunecraft,
 	ActivityTypeHunter,
 	ActivityTypeConstruction,
+	ActivityTypeSailing,
 	ActivityTypeLeaguePoints,
 	ActivityTypeDeadmanPoints,
 	ActivityTypeBountyHunterHunter,
