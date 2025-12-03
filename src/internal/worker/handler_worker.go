@@ -39,12 +39,16 @@ func (wh *WorkerHandler) GenerateSnapshotOnDemand(w http.ResponseWriter, r *http
 	userId := chi.URLParam(r, "userId")
 	ctx := r.Context()
 
+	wh.logger.InfoArgs(ctx, "Generating snapshot on demand for user: %s", userId)
+
 	ss, err := wh.service.GenerateSnapshotOnDemand(ctx, userId)
 	if err != nil {
 		if errors.Is(err, ErrHiscoreTimeout) {
+			wh.logger.WarnArgs(ctx, "Hiscore timeout while generating snapshot for user: %s", userId)
 			hz_handler.Error(w, service_error.HiscoreTimeout, "Osrs hiscores timed out.")
+			return
 		}
-		wh.logger.ErrorArgs(ctx, "An unexpected error occurred while performing the worker operation: %v", err)
+		wh.logger.ErrorArgs(ctx, "An unexpected error occurred while generating snapshot for user %s: %+v", userId, err)
 		hz_handler.Error(w, service_error.Internal, "An unexpected error occurred while performing the worker operation.")
 		return
 	}

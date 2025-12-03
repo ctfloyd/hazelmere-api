@@ -72,6 +72,7 @@ func (sh *SnapshotHandler) GetAllSnapshotsForUser(w http.ResponseWriter, r *http
 
 	snapshots, err := sh.service.GetAllSnapshotsForUser(r.Context(), userId)
 	if err != nil {
+		sh.logger.ErrorArgs(r.Context(), "An unexpected error occurred while getting all snapshots for user %s: %+v", userId, err)
 		hz_handler.Error(w, service_error.Internal, "An unexpected error occurred while getting all snapshots for user.")
 		return
 	}
@@ -86,16 +87,21 @@ func (sh *SnapshotHandler) GetAllSnapshotsForUser(w http.ResponseWriter, r *http
 func (sh *SnapshotHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
 	var createSnapshotRequest api.CreateSnapshotRequest
 	if ok := hz_handler.ReadBody(w, r, &createSnapshotRequest); !ok {
+		sh.logger.Warn(r.Context(), "Failed to read request body for create snapshot")
 		return
 	}
+
+	sh.logger.InfoArgs(r.Context(), "Creating snapshot for user: %s", createSnapshotRequest.Snapshot.UserId)
 
 	snapshot, err := sh.service.CreateSnapshot(r.Context(), MapApiToDomain(createSnapshotRequest.Snapshot))
 	if err != nil {
 		if errors.Is(err, ErrSnapshotValidation) {
+			sh.logger.WarnArgs(r.Context(), "Invalid snapshot request: %+v", err)
 			hz_handler.Error(w, service_error.InvalidSnapshot, err.Error())
 			return
 		}
 
+		sh.logger.ErrorArgs(r.Context(), "An unexpected error occurred while creating snapshot: %+v", err)
 		hz_handler.Error(w, service_error.Internal, "An unexpected service_error occurred while creating snapshot.")
 		return
 	}
@@ -113,6 +119,7 @@ func (sh *SnapshotHandler) GetSnapshotForUserNearestTimestamp(w http.ResponseWri
 	timestampString := chi.URLParam(r, "timestamp")
 	millis, err := strconv.ParseInt(timestampString, 10, 64)
 	if err != nil {
+		sh.logger.WarnArgs(r.Context(), "Invalid timestamp format for user %s: %s", userId, timestampString)
 		hz_handler.Error(w, service_error.BadRequest, "Could not convert timestamp to a number.")
 		return
 	}
@@ -122,9 +129,11 @@ func (sh *SnapshotHandler) GetSnapshotForUserNearestTimestamp(w http.ResponseWri
 	snapshot, err := sh.service.GetSnapshotForUserNearestTimestamp(r.Context(), userId, millis)
 	if err != nil {
 		if errors.Is(err, ErrSnapshotNotFound) {
+			sh.logger.WarnArgs(r.Context(), "Snapshot not found for user %s nearest timestamp %d", userId, millis)
 			hz_handler.Error(w, service_error.SnapshotNotFound, "Snapshot not found.")
 			return
 		}
+		sh.logger.ErrorArgs(r.Context(), "An unexpected error occurred while getting snapshot for user %s nearest timestamp: %+v", userId, err)
 		hz_handler.Error(w, service_error.Internal, "An unexpected service_error occurred while getting snapshots for user nearest timestamp.")
 		return
 	}
