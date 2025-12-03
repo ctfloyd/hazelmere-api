@@ -98,7 +98,7 @@ func (ss *snapshotService) CreateSnapshot(ctx context.Context, snapshot HiscoreS
 
 	xpChange := 0
 	previousSnapshot, err := ss.GetSnapshotForUserNearestTimestamp(ctx, snapshot.UserId, time.Now().Unix())
-	if err != nil && !errors.Is(err, database.ErrNotFound) {
+	if err != nil && !errors.Is(err, ErrSnapshotNotFound) {
 		return HiscoreSnapshot{}, errors.Join(ErrSnapshotGeneric, err)
 	} else {
 		xpChange = snapshot.GetSkill(ActivityTypeOverall).Experience - previousSnapshot.GetSkill(ActivityTypeOverall).Experience
