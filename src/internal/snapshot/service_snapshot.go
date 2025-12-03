@@ -11,7 +11,7 @@ import (
 
 const MaxIntervalDuration = 365 * 2 * 24 * time.Hour
 
-var ErrSnapshotGeneric = errors.New("an unexpected service_error occurred while performing snapshot operation")
+var ErrSnapshotGeneric = errors.New("an unexpected error occurred while performing snapshot operation")
 var ErrSnapshotValidation = errors.New("snapshot is invalid")
 var ErrSnapshotNotFound = errors.New("snapshot not found")
 var ErrInvalidIntervalRequest = errors.New("invalid interval request")
@@ -96,13 +96,16 @@ func (ss *snapshotService) CreateSnapshot(ctx context.Context, snapshot HiscoreS
 		return HiscoreSnapshot{}, errors.Join(ErrSnapshotValidation, err)
 	}
 
+	xpChange := 0
 	previousSnapshot, err := ss.GetSnapshotForUserNearestTimestamp(ctx, snapshot.UserId, time.Now().Unix())
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		return HiscoreSnapshot{}, errors.Join(ErrSnapshotGeneric, err)
+	} else {
+		xpChange = snapshot.GetSkill(ActivityTypeOverall).Experience - previousSnapshot.GetSkill(ActivityTypeOverall).Experience
 	}
 
 	dataSnapshot := MapDomainToData(snapshot)
-	dataSnapshot.OverallExperienceChange = snapshot.GetSkill(ActivityTypeOverall).Experience - previousSnapshot.GetSkill(ActivityTypeOverall).Experience
+	dataSnapshot.OverallExperienceChange = xpChange
 
 	data, err := ss.repository.InsertSnapshot(ctx, MapDomainToData(snapshot))
 	if err != nil {

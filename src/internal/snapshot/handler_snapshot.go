@@ -102,7 +102,7 @@ func (sh *SnapshotHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 		}
 
 		sh.logger.ErrorArgs(r.Context(), "An unexpected error occurred while creating snapshot: %+v", err)
-		hz_handler.Error(w, service_error.Internal, "An unexpected service_error occurred while creating snapshot.")
+		hz_handler.Error(w, service_error.Internal, "An unexpected error occurred while creating snapshot.")
 		return
 	}
 
