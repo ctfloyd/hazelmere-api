@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const MaxIntervalDuration = 365 * 2 * 24 * time.Hour
+const MaxIntervalDuration = 5 * 365 * 2 * 24 * time.Hour
 
 var ErrSnapshotGeneric = errors.New("an unexpected error occurred while performing snapshot operation")
 var ErrSnapshotValidation = errors.New("snapshot is invalid")
