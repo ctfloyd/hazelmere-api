@@ -54,8 +54,8 @@ func NewSnapshotService(logger hz_logger.Logger, repository SnapshotRepository, 
 }
 
 const (
-	DailyMaxDuration   = 365 * 24 * time.Hour
-	WeeklyMaxDuration  = 2 * 365 * 24 * time.Hour
+	DailyMaxDuration  = 366 * 24 * time.Hour
+	WeeklyMaxDuration = 2 * 366 * 24 * time.Hour
 )
 
 var ErrInvalidAggregationWindow = errors.New("invalid aggregation window for requested time range")
@@ -97,7 +97,7 @@ func validateAggregationWindow(startTime, endTime time.Time, window api.Aggregat
 	switch window {
 	case api.AggregationWindowDaily:
 		if duration > DailyMaxDuration {
-			return errors.Join(ErrInvalidAggregationWindow, errors.New("daily aggregation requires time range <= 365 days"))
+			return errors.Join(ErrInvalidAggregationWindow, errors.New("daily aggregation requires time range <= 366 days"))
 		}
 	case api.AggregationWindowWeekly:
 		if duration > WeeklyMaxDuration {
@@ -233,8 +233,11 @@ func (ss *snapshotService) primeUserCache(ctx context.Context, userId string) {
 		return
 	}
 
+	ss.logger.InfoArgs(ctx, "Priming user %s: oldest=%v, latest=%v", userId, oldest.Timestamp, latest.Timestamp)
+
 	batches := ss.calculateBatches(oldest.Timestamp, latest.Timestamp)
 	if len(batches) == 0 {
+		ss.logger.WarnArgs(ctx, "No batches calculated for user %s", userId)
 		return
 	}
 
@@ -279,6 +282,11 @@ func (ss *snapshotService) calculateBatches(oldest, latest time.Time) []timeBatc
 	var batches []timeBatch
 	current := oldest
 
+	// Handle case where oldest equals latest (single snapshot or same timestamp)
+	if !current.Before(latest) {
+		return []timeBatch{{start: oldest, end: latest}}
+	}
+
 	for current.Before(latest) {
 		batchEnd := current.Add(batchSize)
 		if batchEnd.After(latest) {
@@ -286,6 +294,11 @@ func (ss *snapshotService) calculateBatches(oldest, latest time.Time) []timeBatc
 		}
 		batches = append(batches, timeBatch{start: current, end: batchEnd})
 		current = batchEnd
+	}
+
+	// Ensure we always have at least one batch
+	if len(batches) == 0 {
+		batches = append(batches, timeBatch{start: oldest, end: latest})
 	}
 
 	return batches
