@@ -23,9 +23,11 @@ type SnapshotRepository interface {
 	GetSnapshotById(ctx context.Context, id string) (HiscoreSnapshotData, error)
 	GetLatestSnapshotForUser(ctx context.Context, userId string) (HiscoreSnapshotData, error)
 	GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) (SnapshotIntervalResult, error)
+	GetSnapshotsInRange(ctx context.Context, userId string, startTime time.Time, endTime time.Time) ([]HiscoreSnapshotData, error)
 	GetAllSnapshotsForUser(ctx context.Context, userId string) ([]HiscoreSnapshotData, error)
 	InsertSnapshot(ctx context.Context, snapshot HiscoreSnapshotData) (HiscoreSnapshotData, error)
 	GetSnapshotForUserNearestTimestamp(ctx context.Context, userId string, timestamp time.Time) (HiscoreSnapshotData, error)
+	GetOldestSnapshotForUser(ctx context.Context, userId string) (HiscoreSnapshotData, error)
 }
 
 type mongoSnapshotRepository struct {
@@ -340,4 +342,48 @@ func (sr *mongoSnapshotRepository) getSnapshotForUserNearestTimestampGreaterThan
 	}
 
 	return hs, nil
+}
+
+func (sr *mongoSnapshotRepository) GetSnapshotsInRange(ctx context.Context, userId string, startTime time.Time, endTime time.Time) ([]HiscoreSnapshotData, error) {
+	filter := bson.M{
+		"userId": userId,
+		"timestamp": bson.M{
+			"$gte": startTime,
+			"$lte": endTime,
+		},
+	}
+
+	opts := options.Find().SetSort(bson.D{{Key: "timestamp", Value: 1}})
+	cursor, err := sr.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, errors.Join(database.ErrGeneric, err)
+	}
+
+	var results []HiscoreSnapshotData
+	if err = cursor.All(ctx, &results); err != nil {
+		return nil, errors.Join(database.ErrGeneric, err)
+	}
+
+	return results, nil
+}
+
+func (sr *mongoSnapshotRepository) GetOldestSnapshotForUser(ctx context.Context, userId string) (HiscoreSnapshotData, error) {
+	sort := options.FindOne().SetSort(bson.D{{Key: "timestamp", Value: 1}})
+	filter := bson.M{"userId": userId}
+
+	result := sr.collection.FindOne(ctx, filter, sort)
+	if result.Err() != nil {
+		if errors.Is(result.Err(), mongo.ErrNoDocuments) {
+			return HiscoreSnapshotData{}, errors.Join(database.ErrNotFound, result.Err())
+		}
+		return HiscoreSnapshotData{}, errors.Join(database.ErrGeneric, result.Err())
+	}
+
+	var snapshot HiscoreSnapshotData
+	err := result.Decode(&snapshot)
+	if err != nil {
+		return HiscoreSnapshotData{}, errors.Join(database.ErrGeneric, err)
+	}
+
+	return snapshot, nil
 }

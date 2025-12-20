@@ -13,6 +13,7 @@ type UserRepository interface {
 	GetUserById(ctx context.Context, id string) (UserData, error)
 	GetUserByRunescapeName(ctx context.Context, runescapeName string) (UserData, error)
 	GetAllUsers(ctx context.Context) ([]UserData, error)
+	GetUsersWithTrackingEnabled(ctx context.Context) ([]UserData, error)
 	CreateUser(ctx context.Context, user UserData) (UserData, error)
 	UpdateUser(ctx context.Context, user UserData) (UserData, error)
 }
@@ -73,6 +74,22 @@ func (ur *mongoUserRepository) GetUserByRunescapeName(ctx context.Context, runes
 
 func (ur *mongoUserRepository) GetAllUsers(ctx context.Context) ([]UserData, error) {
 	cursor, err := ur.collection.Find(ctx, bson.D{})
+	if err != nil {
+		return []UserData{}, errors.Join(database.ErrGeneric, err)
+	}
+
+	var results []UserData
+	if err = cursor.All(ctx, &results); err != nil {
+		return []UserData{}, errors.Join(database.ErrGeneric, err)
+	}
+
+	return results, nil
+}
+
+func (ur *mongoUserRepository) GetUsersWithTrackingEnabled(ctx context.Context) ([]UserData, error) {
+	filter := bson.M{"trackingStatus": string(TrackingStatusEnabled)}
+
+	cursor, err := ur.collection.Find(ctx, filter)
 	if err != nil {
 		return []UserData{}, errors.Join(database.ErrGeneric, err)
 	}

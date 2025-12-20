@@ -46,17 +46,23 @@ func (app *Application) Init(logger hz_logger.Logger, config *hz_config.Config) 
 		UserCollectionName:     config.ValueOrPanic("mongo.database.collections.user"),
 	})
 
-	snapshotCollection := f.NewSnapshotCollection()
-	snapshotRepo := snapshot.NewSnapshotRepository(snapshotCollection, logger)
-	snapshotValidator := snapshot.NewSnapshotValidator()
-	snapshotService := snapshot.NewSnapshotService(logger, snapshotRepo, snapshotValidator)
-	snapshotHandler := snapshot.NewSnapshotHandler(logger, snapshotService)
-
 	userCollection := f.NewUserCollection()
 	userRepo := user.NewUserRepository(userCollection, logger)
 	userValidator := user.NewUserValidator()
 	userService := user.NewUserService(logger, userRepo, userValidator)
 	userHandler := user.NewUserHandler(logger, userService)
+
+	snapshotCollection := f.NewSnapshotCollection()
+	snapshotRepo := snapshot.NewSnapshotRepository(snapshotCollection, logger)
+	snapshotValidator := snapshot.NewSnapshotValidator()
+	snapshotCache := snapshot.NewSnapshotCache()
+	snapshotService := snapshot.NewSnapshotService(logger, snapshotRepo, snapshotValidator, snapshotCache, userRepo)
+	snapshotHandler := snapshot.NewSnapshotHandler(logger, snapshotService)
+
+	logger.Info(context.TODO(), "Starting cache priming...")
+	if err := snapshotService.PrimeCache(context.TODO()); err != nil {
+		logger.ErrorArgs(context.TODO(), "Failed to prime cache: %v", err)
+	}
 
 	workerClient := initialize.InitWorkerClient(logger, config)
 	workerService := worker.NewWorkerService(logger, workerClient, snapshotService)
