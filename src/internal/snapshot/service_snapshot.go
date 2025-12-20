@@ -17,10 +17,16 @@ var ErrSnapshotValidation = errors.New("snapshot is invalid")
 var ErrSnapshotNotFound = errors.New("snapshot not found")
 var ErrInvalidIntervalRequest = errors.New("invalid interval request")
 
+type SnapshotIntervalResponse struct {
+	Snapshots          []HiscoreSnapshot
+	TotalSnapshots     int
+	SnapshotsWithGains int
+}
+
 type SnapshotService interface {
 	CreateSnapshot(ctx context.Context, snapshot HiscoreSnapshot) (HiscoreSnapshot, error)
 	GetSnapshotById(ctx context.Context, id string) (HiscoreSnapshot, error)
-	GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) ([]HiscoreSnapshot, error)
+	GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) (SnapshotIntervalResponse, error)
 	GetAllSnapshotsForUser(ctx context.Context, userId string) ([]HiscoreSnapshot, error)
 	GetSnapshotForUserNearestTimestamp(ctx context.Context, userId string, timestamp int64) (HiscoreSnapshot, error)
 }
@@ -39,22 +45,24 @@ func NewSnapshotService(logger hz_logger.Logger, repository SnapshotRepository, 
 	}
 }
 
-func (ss *snapshotService) GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) ([]HiscoreSnapshot, error) {
+func (ss *snapshotService) GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) (SnapshotIntervalResponse, error) {
 	startTime, endTime, err := validateSnapshotInterval(startTime, endTime)
 	if err != nil {
-		return nil, err
+		return SnapshotIntervalResponse{}, err
 	}
 
 	aggregationWindow = normalizeAggregationWindow(aggregationWindow)
 
-	data, err := ss.repository.GetSnapshotInterval(ctx, userId, startTime, endTime, aggregationWindow)
+	result, err := ss.repository.GetSnapshotInterval(ctx, userId, startTime, endTime, aggregationWindow)
 	if err != nil {
-		return nil, errors.Join(ErrSnapshotGeneric, err)
+		return SnapshotIntervalResponse{}, errors.Join(ErrSnapshotGeneric, err)
 	}
 
-	snapshots := HiscoreSnapshot{}.ManyFromData(data)
-
-	return snapshots, nil
+	return SnapshotIntervalResponse{
+		Snapshots:          HiscoreSnapshot{}.ManyFromData(result.Snapshots),
+		TotalSnapshots:     result.TotalSnapshots,
+		SnapshotsWithGains: result.SnapshotsWithGains,
+	}, nil
 }
 
 func normalizeAggregationWindow(window api.AggregationWindow) api.AggregationWindow {

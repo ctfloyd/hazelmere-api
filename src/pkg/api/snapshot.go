@@ -64,5 +64,7 @@ type GetSnapshotIntervalRequest struct {
 }
 
 type GetSnapshotIntervalResponse struct {
-	Snapshots []HiscoreSnapshot `json:"snapshots"`
+	Snapshots      []HiscoreSnapshot `json:"snapshots"`
+	TotalSnapshots int               `json:"totalSnapshots"`
+	SnapshotsWithGains int           `json:"snapshotsWithGains"`
 }

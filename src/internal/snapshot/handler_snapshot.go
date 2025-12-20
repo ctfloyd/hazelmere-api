@@ -47,7 +47,7 @@ func (sh *SnapshotHandler) GetSnapshotInterval(w http.ResponseWriter, r *http.Re
 	}
 
 	sh.logger.InfoArgs(r.Context(), "Getting snapshot interval: %v", intervalRequest)
-	snapshots, err := sh.service.GetSnapshotInterval(r.Context(), intervalRequest.UserId, intervalRequest.StartTime, intervalRequest.EndTime, intervalRequest.AggregationWindow)
+	result, err := sh.service.GetSnapshotInterval(r.Context(), intervalRequest.UserId, intervalRequest.StartTime, intervalRequest.EndTime, intervalRequest.AggregationWindow)
 	if err != nil {
 		if errors.Is(err, ErrInvalidIntervalRequest) {
 			sh.logger.WarnArgs(r.Context(), "Invalid snapshot interval request: %+v", err)
@@ -60,7 +60,9 @@ func (sh *SnapshotHandler) GetSnapshotInterval(w http.ResponseWriter, r *http.Re
 	}
 
 	response := api.GetSnapshotIntervalResponse{
-		Snapshots: HiscoreSnapshot{}.ManyToAPI(snapshots),
+		Snapshots:          HiscoreSnapshot{}.ManyToAPI(result.Snapshots),
+		TotalSnapshots:     result.TotalSnapshots,
+		SnapshotsWithGains: result.SnapshotsWithGains,
 	}
 
 	hz_handler.Ok(w, response)

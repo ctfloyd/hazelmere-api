@@ -13,10 +13,16 @@ import (
 	"time"
 )
 
+type SnapshotIntervalResult struct {
+	Snapshots          []HiscoreSnapshotData
+	TotalSnapshots     int
+	SnapshotsWithGains int
+}
+
 type SnapshotRepository interface {
 	GetSnapshotById(ctx context.Context, id string) (HiscoreSnapshotData, error)
 	GetLatestSnapshotForUser(ctx context.Context, userId string) (HiscoreSnapshotData, error)
-	GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) ([]HiscoreSnapshotData, error)
+	GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) (SnapshotIntervalResult, error)
 	GetAllSnapshotsForUser(ctx context.Context, userId string) ([]HiscoreSnapshotData, error)
 	InsertSnapshot(ctx context.Context, snapshot HiscoreSnapshotData) (HiscoreSnapshotData, error)
 	GetSnapshotForUserNearestTimestamp(ctx context.Context, userId string, timestamp time.Time) (HiscoreSnapshotData, error)
@@ -34,100 +40,144 @@ func NewSnapshotRepository(snapshotCollection *mongo.Collection, logger hz_logge
 	}
 }
 
-func (sr *mongoSnapshotRepository) GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) ([]HiscoreSnapshotData, error) {
+func (sr *mongoSnapshotRepository) GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) (SnapshotIntervalResult, error) {
 	dateFormat := getDateFormatForAggregationWindow(aggregationWindow)
 
-	pipeline := []bson.M{
-		// Stage 1: Match snapshots for user within time range with experience changes
-		{
-			"$match": bson.M{
-				"userId": userId,
-				"timestamp": bson.M{
-					"$gte": startTime,
-					"$lte": endTime,
-				},
-				"overallExperienceChange": bson.M{
-					"$ne": 0, // Only snapshots where experience actually changed
-				},
-			},
+	baseFilter := bson.M{
+		"userId": userId,
+		"timestamp": bson.M{
+			"$gte": startTime,
+			"$lte": endTime,
 		},
-		// Stage 2: Add a field for the date to group by (based on aggregation window)
-		{
-			"$addFields": bson.M{
-				"dateOnly": bson.M{
-					"$dateToString": bson.M{
-						"format": dateFormat,
-						"date":   "$timestamp",
+	}
+
+	group, ctx := errgroup.WithContext(ctx)
+
+	var snapshots []HiscoreSnapshotData
+	var totalCount int64
+	var gainsCount int64
+
+	// Run aggregation pipeline for snapshots
+	group.Go(func() error {
+		pipeline := []bson.M{
+			{
+				"$match": bson.M{
+					"userId": userId,
+					"timestamp": bson.M{
+						"$gte": startTime,
+						"$lte": endTime,
+					},
+					"overallExperienceChange": bson.M{
+						"$ne": 0,
 					},
 				},
-				"overallExperience": bson.M{
-					"$let": bson.M{
-						"vars": bson.M{
-							"overallSkill": bson.M{
-								"$arrayElemAt": bson.A{
-									bson.M{
-										"$filter": bson.M{
-											"input": "$skills",
-											"cond":  bson.M{"$eq": bson.A{"$$this.activityType", "OVERALL"}},
+			},
+			{
+				"$addFields": bson.M{
+					"dateOnly": bson.M{
+						"$dateToString": bson.M{
+							"format": dateFormat,
+							"date":   "$timestamp",
+						},
+					},
+					"overallExperience": bson.M{
+						"$let": bson.M{
+							"vars": bson.M{
+								"overallSkill": bson.M{
+									"$arrayElemAt": bson.A{
+										bson.M{
+											"$filter": bson.M{
+												"input": "$skills",
+												"cond":  bson.M{"$eq": bson.A{"$$this.activityType", "OVERALL"}},
+											},
 										},
+										0,
 									},
-									0,
 								},
 							},
+							"in": "$$overallSkill.experience",
 						},
-						"in": "$$overallSkill.experience",
 					},
 				},
 			},
-		},
-		// Stage 3: Sort by date and overall experience (highest first within each day)
-		// Note: Must use bson.D to guarantee field order in multi-field sort
-		{
-			"$sort": bson.D{
-				{Key: "dateOnly", Value: 1},
-				{Key: "overallExperience", Value: -1}, // Highest experience first
-				{Key: "timestamp", Value: -1},         // Most recent timestamp as tiebreaker
-			},
-		},
-		// Stage 4: Group by date and take the first (highest experience) document
-		{
-			"$group": bson.M{
-				"_id": "$dateOnly",
-				"snapshot": bson.M{
-					"$first": "$$ROOT", // Take the entire document
+			{
+				"$sort": bson.D{
+					{Key: "dateOnly", Value: 1},
+					{Key: "overallExperience", Value: -1},
+					{Key: "timestamp", Value: -1},
 				},
 			},
-		},
-		// Stage 5: Replace root with the snapshot document and remove temporary fields
-		{
-			"$replaceRoot": bson.M{
-				"newRoot": "$snapshot",
+			{
+				"$group": bson.M{
+					"_id": "$dateOnly",
+					"snapshot": bson.M{
+						"$first": "$$ROOT",
+					},
+				},
 			},
-		},
-		// Stage 6: Remove temporary fields and sort by timestamp
-		{
-			"$project": bson.M{
-				"dateOnly":          0,
-				"overallExperience": 0,
+			{
+				"$replaceRoot": bson.M{
+					"newRoot": "$snapshot",
+				},
 			},
-		},
-		// Stage 7: Final sort by timestamp
-		{
-			"$sort": bson.M{"timestamp": 1},
-		},
+			{
+				"$project": bson.M{
+					"dateOnly":          0,
+					"overallExperience": 0,
+				},
+			},
+			{
+				"$sort": bson.M{"timestamp": 1},
+			},
+		}
+
+		cursor, err := sr.collection.Aggregate(ctx, pipeline)
+		if err != nil {
+			return err
+		}
+
+		return cursor.All(ctx, &snapshots)
+	})
+
+	// Count total snapshots in interval
+	group.Go(func() error {
+		count, err := sr.collection.CountDocuments(ctx, baseFilter)
+		if err != nil {
+			return err
+		}
+		totalCount = count
+		return nil
+	})
+
+	// Count snapshots with gains (positive experience change)
+	group.Go(func() error {
+		gainsFilter := bson.M{
+			"userId": userId,
+			"timestamp": bson.M{
+				"$gte": startTime,
+				"$lte": endTime,
+			},
+			"overallExperienceChange": bson.M{
+				"$gt": 0,
+			},
+		}
+		count, err := sr.collection.CountDocuments(ctx, gainsFilter)
+		if err != nil {
+			return err
+		}
+		gainsCount = count
+		return nil
+	})
+
+	if err := group.Wait(); err != nil {
+		return SnapshotIntervalResult{}, errors.Join(database.ErrGeneric, err)
 	}
 
-	cursor, err := sr.collection.Aggregate(ctx, pipeline)
-	if err != nil {
-		return []HiscoreSnapshotData{}, errors.Join(database.ErrGeneric, err)
-	}
-
-	var results []HiscoreSnapshotData
-	if err = cursor.All(ctx, &results); err != nil {
-		return []HiscoreSnapshotData{}, errors.Join(database.ErrGeneric, err)
-	}
-
-	return results, nil
+	return SnapshotIntervalResult{
+		Snapshots:          snapshots,
+		TotalSnapshots:     int(totalCount),
+		SnapshotsWithGains: int(gainsCount),
+	}, nil
 }
 
 func getDateFormatForAggregationWindow(window api.AggregationWindow) string {
