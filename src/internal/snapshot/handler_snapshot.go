@@ -60,7 +60,7 @@ func (sh *SnapshotHandler) GetSnapshotInterval(w http.ResponseWriter, r *http.Re
 	}
 
 	response := api.GetSnapshotIntervalResponse{
-		Snapshots: MapManyDomainToApi(snapshots),
+		Snapshots: HiscoreSnapshot{}.ManyToAPI(snapshots),
 	}
 
 	hz_handler.Ok(w, response)
@@ -78,7 +78,7 @@ func (sh *SnapshotHandler) GetAllSnapshotsForUser(w http.ResponseWriter, r *http
 	}
 
 	response := api.GetAllSnapshotsForUser{
-		Snapshots: MapManyDomainToApi(snapshots),
+		Snapshots: HiscoreSnapshot{}.ManyToAPI(snapshots),
 	}
 
 	hz_handler.Ok(w, response)
@@ -93,7 +93,7 @@ func (sh *SnapshotHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 
 	sh.logger.InfoArgs(r.Context(), "Creating snapshot for user: %s", createSnapshotRequest.Snapshot.UserId)
 
-	snapshot, err := sh.service.CreateSnapshot(r.Context(), MapApiToDomain(createSnapshotRequest.Snapshot))
+	snapshot, err := sh.service.CreateSnapshot(r.Context(), HiscoreSnapshot{}.FromAPI(createSnapshotRequest.Snapshot))
 	if err != nil {
 		if errors.Is(err, ErrSnapshotValidation) {
 			sh.logger.WarnArgs(r.Context(), "Invalid snapshot request: %+v", err)
@@ -107,7 +107,7 @@ func (sh *SnapshotHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 	}
 
 	response := api.CreateSnapshotResponse{
-		Snapshot: MapDomainToApi(snapshot),
+		Snapshot: snapshot.ToAPI(),
 	}
 
 	hz_handler.Ok(w, response)
@@ -139,7 +139,7 @@ func (sh *SnapshotHandler) GetSnapshotForUserNearestTimestamp(w http.ResponseWri
 	}
 
 	response := api.GetSnapshotNearestTimestampResponse{
-		Snapshot: MapDomainToApi(snapshot),
+		Snapshot: snapshot.ToAPI(),
 	}
 
 	hz_handler.Ok(w, response)

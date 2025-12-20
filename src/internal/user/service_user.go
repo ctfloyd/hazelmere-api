@@ -43,7 +43,7 @@ func (us *userService) GetUserById(ctx context.Context, id string) (User, error)
 
 		return User{}, errors.Join(ErrUserGeneric, err)
 	}
-	return MapDataToDomain(data), nil
+	return User{}.FromData(data), nil
 }
 
 func (us *userService) GetAllUsers(ctx context.Context) ([]User, error) {
@@ -51,7 +51,7 @@ func (us *userService) GetAllUsers(ctx context.Context) ([]User, error) {
 	if err != nil {
 		return []User{}, errors.Join(ErrUserGeneric, err)
 	}
-	return MapManyDataToDomain(data), nil
+	return User{}.ManyFromData(data), nil
 }
 
 func (us *userService) CreateUser(ctx context.Context, user User) (User, error) {
@@ -71,12 +71,12 @@ func (us *userService) CreateUser(ctx context.Context, user User) (User, error) 
 		}
 	}
 
-	data, err := us.repository.CreateUser(ctx, MapDomainToData(user))
+	data, err := us.repository.CreateUser(ctx, user.ToData())
 	if err != nil {
 		return User{}, errors.Join(ErrUserGeneric, err)
 	}
 
-	return MapDataToDomain(data), nil
+	return User{}.FromData(data), nil
 }
 
 func (us *userService) UpdateUser(ctx context.Context, user User) (User, error) {
@@ -103,10 +103,10 @@ func (us *userService) UpdateUser(ctx context.Context, user User) (User, error) 
 		return User{}, ErrRunescapeNameTracked
 	}
 
-	data, err := us.repository.UpdateUser(ctx, MapDomainToData(user))
+	data, err := us.repository.UpdateUser(ctx, user.ToData())
 	if err != nil {
 		return User{}, errors.Join(ErrUserGeneric, err)
 	}
 
-	return MapDataToDomain(data), nil
+	return User{}.FromData(data), nil
 }

@@ -57,7 +57,7 @@ func (uh *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := api.GetUserByIdResponse{
-		User: MapDomainToApi(user),
+		User: user.ToAPI(),
 	}
 
 	hz_handler.Ok(w, response)
@@ -74,7 +74,7 @@ func (uh *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := api.GetAllUsersResponse{
-		Users: MapManyDomainToApi(users),
+		Users: User{}.ManyToAPI(users),
 	}
 
 	hz_handler.Ok(w, response)
@@ -90,7 +90,7 @@ func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	uh.logger.InfoArgs(r.Context(), "Creating user: %s", createUserRequest.RunescapeName)
 
-	domainUser := MapCreateUserRequestToDomainUser(createUserRequest)
+	domainUser := User{}.FromCreateRequest(createUserRequest)
 
 	user, err := uh.service.CreateUser(r.Context(), domainUser)
 	if err != nil {
@@ -105,7 +105,7 @@ func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := api.CreateUserResponse{
-		User: MapDomainToApi(user),
+		User: user.ToAPI(),
 	}
 
 	hz_handler.Ok(w, response)
@@ -121,7 +121,7 @@ func (uh *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	uh.logger.InfoArgs(r.Context(), "Updating user: %s", updateUserRequest.Id)
 
-	domainUser := MapUpdateUserRequestToDomainUser(updateUserRequest)
+	domainUser := User{}.FromUpdateRequest(updateUserRequest)
 
 	user, err := uh.service.UpdateUser(r.Context(), domainUser)
 	if err != nil {
@@ -136,7 +136,7 @@ func (uh *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := api.CreateUserResponse{
-		User: MapDomainToApi(user),
+		User: user.ToAPI(),
 	}
 
 	hz_handler.Ok(w, response)

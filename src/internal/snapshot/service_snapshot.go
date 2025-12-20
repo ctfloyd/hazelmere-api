@@ -49,7 +49,7 @@ func (ss *snapshotService) GetSnapshotInterval(ctx context.Context, userId strin
 		return nil, errors.Join(ErrSnapshotGeneric, err)
 	}
 
-	snapshots := MapManyDataToDomain(data)
+	snapshots := HiscoreSnapshot{}.ManyFromData(data)
 
 	return snapshots, nil
 }
@@ -59,7 +59,7 @@ func (ss *snapshotService) GetAllSnapshotsForUser(ctx context.Context, userId st
 	if err != nil {
 		return nil, errors.Join(ErrSnapshotGeneric, err)
 	}
-	return MapManyDataToDomain(data), nil
+	return HiscoreSnapshot{}.ManyFromData(data), nil
 }
 
 func (ss *snapshotService) GetSnapshotById(ctx context.Context, id string) (HiscoreSnapshot, error) {
@@ -70,7 +70,7 @@ func (ss *snapshotService) GetSnapshotById(ctx context.Context, id string) (Hisc
 		}
 		return HiscoreSnapshot{}, errors.Join(ErrSnapshotGeneric, err)
 	}
-	return MapDataToDomain(data), nil
+	return HiscoreSnapshot{}.FromData(data), nil
 }
 
 func (ss *snapshotService) GetSnapshotForUserNearestTimestamp(ctx context.Context, userId string, timestamp int64) (HiscoreSnapshot, error) {
@@ -85,7 +85,7 @@ func (ss *snapshotService) GetSnapshotForUserNearestTimestamp(ctx context.Contex
 		return HiscoreSnapshot{}, errors.Join(ErrSnapshotGeneric, err)
 	}
 
-	return MapDataToDomain(data), nil
+	return HiscoreSnapshot{}.FromData(data), nil
 }
 
 func (ss *snapshotService) CreateSnapshot(ctx context.Context, snapshot HiscoreSnapshot) (HiscoreSnapshot, error) {
@@ -104,15 +104,15 @@ func (ss *snapshotService) CreateSnapshot(ctx context.Context, snapshot HiscoreS
 		xpChange = snapshot.GetSkill(ActivityTypeOverall).Experience - previousSnapshot.GetSkill(ActivityTypeOverall).Experience
 	}
 
-	dataSnapshot := MapDomainToData(snapshot)
+	dataSnapshot := snapshot.ToData()
 	dataSnapshot.OverallExperienceChange = xpChange
 
-	data, err := ss.repository.InsertSnapshot(ctx, MapDomainToData(snapshot))
+	data, err := ss.repository.InsertSnapshot(ctx, dataSnapshot)
 	if err != nil {
 		return HiscoreSnapshot{}, errors.Join(ErrSnapshotGeneric, err)
 	}
 
-	return MapDataToDomain(data), nil
+	return HiscoreSnapshot{}.FromData(data), nil
 }
 
 func validateSnapshotInterval(startTime, endTime time.Time) (time.Time, time.Time, error) {
@@ -135,24 +135,4 @@ func validateSnapshotInterval(startTime, endTime time.Time) (time.Time, time.Tim
 	}
 
 	return startTime, endTime, nil
-}
-
-func filterUnchangedSnapshots(snapshots []HiscoreSnapshot) []HiscoreSnapshot {
-	if len(snapshots) == 0 {
-		return []HiscoreSnapshot{}
-	}
-
-	deltaSnapshots := make([]HiscoreSnapshot, 0)
-	deltaSnapshots = append(deltaSnapshots, snapshots[0])
-
-	for i := 1; i < len(snapshots); i++ {
-		previous := snapshots[i-1]
-		current := snapshots[i]
-
-		if !current.Equals(previous) {
-			deltaSnapshots = append(deltaSnapshots, current)
-		}
-	}
-
-	return deltaSnapshots
 }

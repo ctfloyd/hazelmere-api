@@ -6,7 +6,6 @@ import (
 	"github.com/ctfloyd/hazelmere-api/src/internal/common/handler"
 	"github.com/ctfloyd/hazelmere-api/src/internal/middleware"
 	"github.com/ctfloyd/hazelmere-api/src/internal/service_error"
-	"github.com/ctfloyd/hazelmere-api/src/internal/snapshot"
 	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_handler"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
@@ -54,7 +53,7 @@ func (wh *WorkerHandler) GenerateSnapshotOnDemand(w http.ResponseWriter, r *http
 	}
 
 	response := api.GenerateSnapshotOnDemandResponse{
-		Snapshot: snapshot.MapDomainToApi(ss),
+		Snapshot: ss.ToAPI(),
 	}
 
 	hz_handler.Ok(w, response)
