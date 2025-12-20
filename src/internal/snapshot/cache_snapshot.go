@@ -9,13 +9,19 @@ import (
 
 const (
 	CacheCleanupInterval = 1 * time.Hour
+	DailyThreshold       = 365 * 24 * time.Hour
+	WeeklyThreshold      = 2 * 365 * 24 * time.Hour
 )
 
 type CachedUserData struct {
-	Snapshots  []HiscoreSnapshotData
-	StartTime  time.Time
-	EndTime    time.Time
-	CachedAt   time.Time
+	Daily            []HiscoreSnapshotData
+	Weekly           []HiscoreSnapshotData
+	Monthly          []HiscoreSnapshotData
+	TotalSnapshots   int
+	SnapshotsWithGains int
+	StartTime        time.Time
+	EndTime          time.Time
+	CachedAt         time.Time
 }
 
 type SnapshotCache struct {
@@ -43,33 +49,68 @@ func (sc *SnapshotCache) InvalidateUser(userId string) {
 	sc.cache.Delete(userId)
 }
 
-func (sc *SnapshotCache) GetMissingRange(userId string, startTime, endTime time.Time) (needsFetch bool, fetchStart, fetchEnd time.Time) {
-	cached, found := sc.GetUserData(userId)
-	if !found {
-		return true, startTime, endTime
-	}
-
-	if cached.StartTime.After(startTime) {
-		return true, startTime, endTime
-	}
-
-	if cached.EndTime.Before(endTime) {
-		return true, cached.EndTime, endTime
-	}
-
-	return false, time.Time{}, time.Time{}
+func (sc *SnapshotCache) IsCached(userId string) bool {
+	_, found := sc.cache.Get(userId)
+	return found
 }
 
-func (sc *SnapshotCache) AppendSnapshots(userId string, newSnapshots []HiscoreSnapshotData, newEndTime time.Time) {
+func (sc *SnapshotCache) GetAggregatedData(userId string, startTime, endTime time.Time, window api.AggregationWindow) ([]HiscoreSnapshotData, int, int, bool) {
 	cached, found := sc.GetUserData(userId)
 	if !found {
-		return
+		return nil, 0, 0, false
 	}
 
-	cached.Snapshots = append(cached.Snapshots, newSnapshots...)
-	cached.EndTime = newEndTime
-	cached.CachedAt = time.Now()
-	sc.SetUserData(userId, cached)
+	var source []HiscoreSnapshotData
+	switch window {
+	case api.AggregationWindowDaily:
+		source = cached.Daily
+	case api.AggregationWindowWeekly:
+		source = cached.Weekly
+	case api.AggregationWindowMonthly:
+		source = cached.Monthly
+	default:
+		source = cached.Daily
+	}
+
+	var filtered []HiscoreSnapshotData
+	for _, s := range source {
+		if (s.Timestamp.Equal(startTime) || s.Timestamp.After(startTime)) &&
+			(s.Timestamp.Equal(endTime) || s.Timestamp.Before(endTime)) {
+			filtered = append(filtered, s)
+		}
+	}
+
+	return filtered, cached.TotalSnapshots, cached.SnapshotsWithGains, true
+}
+
+func (sc *SnapshotCache) BuildAndSetUserData(userId string, rawSnapshots []HiscoreSnapshotData, startTime, endTime time.Time) {
+	totalCount := len(rawSnapshots)
+	gainsCount := 0
+
+	var withChanges []HiscoreSnapshotData
+	for _, s := range rawSnapshots {
+		if s.OverallExperienceChange > 0 {
+			gainsCount++
+		}
+		if s.OverallExperienceChange != 0 {
+			withChanges = append(withChanges, s)
+		}
+	}
+
+	daily := aggregateByWindow(withChanges, api.AggregationWindowDaily)
+	weekly := aggregateByWindow(withChanges, api.AggregationWindowWeekly)
+	monthly := aggregateByWindow(withChanges, api.AggregationWindowMonthly)
+
+	sc.SetUserData(userId, CachedUserData{
+		Daily:              daily,
+		Weekly:             weekly,
+		Monthly:            monthly,
+		TotalSnapshots:     totalCount,
+		SnapshotsWithGains: gainsCount,
+		StartTime:          startTime,
+		EndTime:            endTime,
+		CachedAt:           time.Now(),
+	})
 }
 
 func (sc *SnapshotCache) AppendSnapshot(userId string, snapshot HiscoreSnapshotData) {
@@ -78,7 +119,17 @@ func (sc *SnapshotCache) AppendSnapshot(userId string, snapshot HiscoreSnapshotD
 		return
 	}
 
-	cached.Snapshots = append(cached.Snapshots, snapshot)
+	cached.TotalSnapshots++
+	if snapshot.OverallExperienceChange > 0 {
+		cached.SnapshotsWithGains++
+	}
+
+	if snapshot.OverallExperienceChange != 0 {
+		cached.Daily = appendAndReaggregate(cached.Daily, snapshot, api.AggregationWindowDaily)
+		cached.Weekly = appendAndReaggregate(cached.Weekly, snapshot, api.AggregationWindowWeekly)
+		cached.Monthly = appendAndReaggregate(cached.Monthly, snapshot, api.AggregationWindowMonthly)
+	}
+
 	if snapshot.Timestamp.After(cached.EndTime) {
 		cached.EndTime = snapshot.Timestamp
 	}
@@ -86,35 +137,23 @@ func (sc *SnapshotCache) AppendSnapshot(userId string, snapshot HiscoreSnapshotD
 	sc.SetUserData(userId, cached)
 }
 
-func (sc *SnapshotCache) FilterAndAggregate(userId string, startTime, endTime time.Time, window api.AggregationWindow) ([]HiscoreSnapshotData, int, int, bool) {
-	cached, found := sc.GetUserData(userId)
-	if !found {
-		return nil, 0, 0, false
-	}
+func appendAndReaggregate(existing []HiscoreSnapshotData, newSnapshot HiscoreSnapshotData, window api.AggregationWindow) []HiscoreSnapshotData {
+	dateFormat := getDateFormatString(window)
+	newKey := newSnapshot.Timestamp.Format(dateFormat)
 
-	if cached.StartTime.After(startTime) {
-		return nil, 0, 0, false
-	}
-
-	var filtered []HiscoreSnapshotData
-	totalCount := 0
-	gainsCount := 0
-
-	for _, s := range cached.Snapshots {
-		if (s.Timestamp.Equal(startTime) || s.Timestamp.After(startTime)) &&
-			(s.Timestamp.Equal(endTime) || s.Timestamp.Before(endTime)) {
-			totalCount++
-			if s.OverallExperienceChange > 0 {
-				gainsCount++
-			}
-			if s.OverallExperienceChange != 0 {
-				filtered = append(filtered, s)
-			}
+	for i, s := range existing {
+		if s.Timestamp.Format(dateFormat) == newKey {
+			best := selectBestSnapshot([]HiscoreSnapshotData{s, newSnapshot})
+			existing[i] = best
+			return existing
 		}
 	}
 
-	aggregated := aggregateByWindow(filtered, window)
-	return aggregated, totalCount, gainsCount, true
+	existing = append(existing, newSnapshot)
+	sort.Slice(existing, func(i, j int) bool {
+		return existing[i].Timestamp.Before(existing[j].Timestamp)
+	})
+	return existing
 }
 
 func aggregateByWindow(snapshots []HiscoreSnapshotData, window api.AggregationWindow) []HiscoreSnapshotData {

@@ -49,7 +49,7 @@ func (sh *SnapshotHandler) GetSnapshotInterval(w http.ResponseWriter, r *http.Re
 	sh.logger.InfoArgs(r.Context(), "Getting snapshot interval: %v", intervalRequest)
 	result, err := sh.service.GetSnapshotInterval(r.Context(), intervalRequest.UserId, intervalRequest.StartTime, intervalRequest.EndTime, intervalRequest.AggregationWindow)
 	if err != nil {
-		if errors.Is(err, ErrInvalidIntervalRequest) {
+		if errors.Is(err, ErrInvalidIntervalRequest) || errors.Is(err, ErrInvalidAggregationWindow) {
 			sh.logger.WarnArgs(r.Context(), "Invalid snapshot interval request: %+v", err)
 			hz_handler.Error(w, service_error.BadRequest, err.Error())
 		} else {

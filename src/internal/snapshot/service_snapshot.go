@@ -53,6 +53,13 @@ func NewSnapshotService(logger hz_logger.Logger, repository SnapshotRepository, 
 	}
 }
 
+const (
+	DailyMaxDuration   = 365 * 24 * time.Hour
+	WeeklyMaxDuration  = 2 * 365 * 24 * time.Hour
+)
+
+var ErrInvalidAggregationWindow = errors.New("invalid aggregation window for requested time range")
+
 func (ss *snapshotService) GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) (SnapshotIntervalResponse, error) {
 	startTime, endTime, err := validateSnapshotInterval(startTime, endTime)
 	if err != nil {
@@ -61,16 +68,18 @@ func (ss *snapshotService) GetSnapshotInterval(ctx context.Context, userId strin
 
 	aggregationWindow = normalizeAggregationWindow(aggregationWindow)
 
-	needsFetch, fetchStart, fetchEnd := ss.cache.GetMissingRange(userId, startTime, endTime)
-	if needsFetch {
-		if err := ss.fetchAndCacheSnapshots(ctx, userId, fetchStart, fetchEnd); err != nil {
-			return SnapshotIntervalResponse{}, err
-		}
+	if err := validateAggregationWindow(startTime, endTime, aggregationWindow); err != nil {
+		return SnapshotIntervalResponse{}, err
 	}
 
-	snapshots, totalCount, gainsCount, ok := ss.cache.FilterAndAggregate(userId, startTime, endTime, aggregationWindow)
+	if !ss.cache.IsCached(userId) {
+		ss.logger.DebugArgs(ctx, "Cache miss for user %s, falling back to repository", userId)
+		return ss.getIntervalFromRepository(ctx, userId, startTime, endTime, aggregationWindow)
+	}
+
+	snapshots, totalCount, gainsCount, ok := ss.cache.GetAggregatedData(userId, startTime, endTime, aggregationWindow)
 	if !ok {
-		ss.logger.WarnArgs(ctx, "Cache miss after fetch for user %s", userId)
+		ss.logger.WarnArgs(ctx, "Cache miss after check for user %s", userId)
 		return ss.getIntervalFromRepository(ctx, userId, startTime, endTime, aggregationWindow)
 	}
 
@@ -82,39 +91,20 @@ func (ss *snapshotService) GetSnapshotInterval(ctx context.Context, userId strin
 	}, nil
 }
 
-func (ss *snapshotService) fetchAndCacheSnapshots(ctx context.Context, userId string, startTime, endTime time.Time) error {
-	cached, found := ss.cache.GetUserData(userId)
+func validateAggregationWindow(startTime, endTime time.Time, window api.AggregationWindow) error {
+	duration := endTime.Sub(startTime)
 
-	if found && !cached.StartTime.After(startTime) {
-		newSnapshots, err := ss.repository.GetSnapshotsInRange(ctx, userId, cached.EndTime, endTime)
-		if err != nil {
-			return errors.Join(ErrSnapshotGeneric, err)
+	switch window {
+	case api.AggregationWindowDaily:
+		if duration > DailyMaxDuration {
+			return errors.Join(ErrInvalidAggregationWindow, errors.New("daily aggregation requires time range <= 365 days"))
 		}
-		ss.cache.AppendSnapshots(userId, newSnapshots, endTime)
-		ss.logger.DebugArgs(ctx, "Extended cache for user %s from %v to %v", userId, cached.EndTime, endTime)
-	} else {
-		snapshots, err := ss.repository.GetAllSnapshotsForUser(ctx, userId)
-		if err != nil {
-			return errors.Join(ErrSnapshotGeneric, err)
+	case api.AggregationWindowWeekly:
+		if duration > WeeklyMaxDuration {
+			return errors.Join(ErrInvalidAggregationWindow, errors.New("weekly aggregation requires time range <= 2 years"))
 		}
-
-		cacheStart := time.Now()
-		cacheEnd := time.Now()
-		if len(snapshots) > 0 {
-			cacheStart = snapshots[0].Timestamp
-			cacheEnd = snapshots[len(snapshots)-1].Timestamp
-		}
-		if endTime.After(cacheEnd) {
-			cacheEnd = endTime
-		}
-
-		ss.cache.SetUserData(userId, CachedUserData{
-			Snapshots: snapshots,
-			StartTime: cacheStart,
-			EndTime:   cacheEnd,
-			CachedAt:  time.Now(),
-		})
-		ss.logger.DebugArgs(ctx, "Primed cache for user %s with %d snapshots", userId, len(snapshots))
+	case api.AggregationWindowMonthly:
+		// Monthly is always valid
 	}
 
 	return nil
@@ -275,12 +265,7 @@ func (ss *snapshotService) primeUserCache(ctx context.Context, userId string) {
 		return
 	}
 
-	ss.cache.SetUserData(userId, CachedUserData{
-		Snapshots: allSnapshots,
-		StartTime: oldest.Timestamp,
-		EndTime:   latest.Timestamp,
-		CachedAt:  time.Now(),
-	})
+	ss.cache.BuildAndSetUserData(userId, allSnapshots, oldest.Timestamp, latest.Timestamp)
 
 	ss.logger.DebugArgs(ctx, "Primed cache for user %s with %d snapshots in %d batches", userId, len(allSnapshots), len(batches))
 }
