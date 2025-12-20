@@ -17,6 +17,7 @@ type HiscoreSnapshot struct {
 	Skills     []SkillSnapshot    `json:"skills"`
 	Bosses     []BossSnapshot     `json:"bosses"`
 	Activities []ActivitySnapshot `json:"activities"`
+	Source     string             `json:"source,omitempty"`
 }
 
 type SkillSnapshot struct {
@@ -64,7 +65,7 @@ type GetSnapshotIntervalRequest struct {
 }
 
 type GetSnapshotIntervalResponse struct {
-	Snapshots      []HiscoreSnapshot `json:"snapshots"`
-	TotalSnapshots int               `json:"totalSnapshots"`
-	SnapshotsWithGains int           `json:"snapshotsWithGains"`
+	Snapshots          []HiscoreSnapshot `json:"snapshots"`
+	TotalSnapshots     int               `json:"totalSnapshots"`
+	SnapshotsWithGains int               `json:"snapshotsWithGains"`
 }

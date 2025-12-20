@@ -12,6 +12,7 @@ type HiscoreSnapshot struct {
 	Skills     []SkillSnapshot
 	Bosses     []BossSnapshot
 	Activities []ActivitySnapshot
+	Source     string
 }
 
 func (hs HiscoreSnapshot) GetSkill(activityType ActivityType) SkillSnapshot {
@@ -161,6 +162,7 @@ func (HiscoreSnapshot) FromAPI(snapshot api.HiscoreSnapshot) HiscoreSnapshot {
 		Skills:     skills,
 		Bosses:     bosses,
 		Activities: activities,
+		Source:     snapshot.Source,
 	}
 }
 

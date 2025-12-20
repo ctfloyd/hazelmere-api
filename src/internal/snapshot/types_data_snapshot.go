@@ -10,6 +10,7 @@ type HiscoreSnapshotData struct {
 	Bosses                  []BossSnapshotData     `bson:"bosses"`
 	Activities              []ActivitySnapshotData `bson:"activities"`
 	OverallExperienceChange int                    `bson:"overallExperienceChange"`
+	Source                  string                 `bson:"source"`
 }
 
 type SkillSnapshotData struct {
