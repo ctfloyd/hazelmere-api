@@ -78,11 +78,12 @@ func (sr *mongoSnapshotRepository) GetSnapshotInterval(ctx context.Context, user
 			},
 		},
 		// Stage 3: Sort by date and overall experience (highest first within each day)
+		// Note: Must use bson.D to guarantee field order in multi-field sort
 		{
-			"$sort": bson.M{
-				"dateOnly":          1,
-				"overallExperience": -1, // Highest experience first
-				"timestamp":         -1, // Most recent timestamp as tiebreaker
+			"$sort": bson.D{
+				{Key: "dateOnly", Value: 1},
+				{Key: "overallExperience", Value: -1}, // Highest experience first
+				{Key: "timestamp", Value: -1},         // Most recent timestamp as tiebreaker
 			},
 		},
 		// Stage 4: Group by date and take the first (highest experience) document
