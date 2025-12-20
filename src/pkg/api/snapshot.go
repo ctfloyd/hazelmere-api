@@ -2,6 +2,14 @@ package api
 
 import "time"
 
+type AggregationWindow string
+
+const (
+	AggregationWindowDaily   AggregationWindow = "daily"
+	AggregationWindowWeekly  AggregationWindow = "weekly"
+	AggregationWindowMonthly AggregationWindow = "monthly"
+)
+
 type HiscoreSnapshot struct {
 	Id         string             `json:"id"`
 	UserId     string             `json:"userId"`
@@ -49,9 +57,10 @@ type GetAllSnapshotsForUser struct {
 }
 
 type GetSnapshotIntervalRequest struct {
-	UserId    string    `json:"userId"`
-	StartTime time.Time `json:"startTime"`
-	EndTime   time.Time `json:"endTime"`
+	UserId            string            `json:"userId"`
+	StartTime         time.Time         `json:"startTime"`
+	EndTime           time.Time         `json:"endTime"`
+	AggregationWindow AggregationWindow `json:"aggregationWindow"`
 }
 
 type GetSnapshotIntervalResponse struct {

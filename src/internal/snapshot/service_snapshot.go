@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/ctfloyd/hazelmere-api/src/internal/database"
+	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/google/uuid"
 	"time"
@@ -19,7 +20,7 @@ var ErrInvalidIntervalRequest = errors.New("invalid interval request")
 type SnapshotService interface {
 	CreateSnapshot(ctx context.Context, snapshot HiscoreSnapshot) (HiscoreSnapshot, error)
 	GetSnapshotById(ctx context.Context, id string) (HiscoreSnapshot, error)
-	GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time) ([]HiscoreSnapshot, error)
+	GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) ([]HiscoreSnapshot, error)
 	GetAllSnapshotsForUser(ctx context.Context, userId string) ([]HiscoreSnapshot, error)
 	GetSnapshotForUserNearestTimestamp(ctx context.Context, userId string, timestamp int64) (HiscoreSnapshot, error)
 }
@@ -38,13 +39,15 @@ func NewSnapshotService(logger hz_logger.Logger, repository SnapshotRepository, 
 	}
 }
 
-func (ss *snapshotService) GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time) ([]HiscoreSnapshot, error) {
+func (ss *snapshotService) GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) ([]HiscoreSnapshot, error) {
 	startTime, endTime, err := validateSnapshotInterval(startTime, endTime)
 	if err != nil {
 		return nil, err
 	}
 
-	data, err := ss.repository.GetSnapshotInterval(ctx, userId, startTime, endTime)
+	aggregationWindow = normalizeAggregationWindow(aggregationWindow)
+
+	data, err := ss.repository.GetSnapshotInterval(ctx, userId, startTime, endTime, aggregationWindow)
 	if err != nil {
 		return nil, errors.Join(ErrSnapshotGeneric, err)
 	}
@@ -52,6 +55,15 @@ func (ss *snapshotService) GetSnapshotInterval(ctx context.Context, userId strin
 	snapshots := HiscoreSnapshot{}.ManyFromData(data)
 
 	return snapshots, nil
+}
+
+func normalizeAggregationWindow(window api.AggregationWindow) api.AggregationWindow {
+	switch window {
+	case api.AggregationWindowDaily, api.AggregationWindowWeekly, api.AggregationWindowMonthly:
+		return window
+	default:
+		return api.AggregationWindowDaily
+	}
 }
 
 func (ss *snapshotService) GetAllSnapshotsForUser(ctx context.Context, userId string) ([]HiscoreSnapshot, error) {

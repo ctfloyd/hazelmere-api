@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/ctfloyd/hazelmere-api/src/internal/database"
+	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -15,7 +16,7 @@ import (
 type SnapshotRepository interface {
 	GetSnapshotById(ctx context.Context, id string) (HiscoreSnapshotData, error)
 	GetLatestSnapshotForUser(ctx context.Context, userId string) (HiscoreSnapshotData, error)
-	GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time) ([]HiscoreSnapshotData, error)
+	GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) ([]HiscoreSnapshotData, error)
 	GetAllSnapshotsForUser(ctx context.Context, userId string) ([]HiscoreSnapshotData, error)
 	InsertSnapshot(ctx context.Context, snapshot HiscoreSnapshotData) (HiscoreSnapshotData, error)
 	GetSnapshotForUserNearestTimestamp(ctx context.Context, userId string, timestamp time.Time) (HiscoreSnapshotData, error)
@@ -33,7 +34,9 @@ func NewSnapshotRepository(snapshotCollection *mongo.Collection, logger hz_logge
 	}
 }
 
-func (sr *mongoSnapshotRepository) GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time) ([]HiscoreSnapshotData, error) {
+func (sr *mongoSnapshotRepository) GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) ([]HiscoreSnapshotData, error) {
+	dateFormat := getDateFormatForAggregationWindow(aggregationWindow)
+
 	pipeline := []bson.M{
 		// Stage 1: Match snapshots for user within time range with experience changes
 		{
@@ -48,12 +51,12 @@ func (sr *mongoSnapshotRepository) GetSnapshotInterval(ctx context.Context, user
 				},
 			},
 		},
-		// Stage 2: Add a field for the date (year-month-day) to group by
+		// Stage 2: Add a field for the date to group by (based on aggregation window)
 		{
 			"$addFields": bson.M{
 				"dateOnly": bson.M{
 					"$dateToString": bson.M{
-						"format": "%Y-%m-%d",
+						"format": dateFormat,
 						"date":   "$timestamp",
 					},
 				},
@@ -125,6 +128,17 @@ func (sr *mongoSnapshotRepository) GetSnapshotInterval(ctx context.Context, user
 	}
 
 	return results, nil
+}
+
+func getDateFormatForAggregationWindow(window api.AggregationWindow) string {
+	switch window {
+	case api.AggregationWindowWeekly:
+		return "%G-W%V"
+	case api.AggregationWindowMonthly:
+		return "%Y-%m"
+	default:
+		return "%Y-%m-%d"
+	}
 }
 
 func (sr *mongoSnapshotRepository) InsertSnapshot(ctx context.Context, snapshot HiscoreSnapshotData) (HiscoreSnapshotData, error) {
