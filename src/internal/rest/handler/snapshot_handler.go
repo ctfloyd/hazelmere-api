@@ -175,6 +175,22 @@ func (sh *SnapshotHandler) GetSnapshotWithDeltas(w http.ResponseWriter, r *http.
 		return
 	}
 
+	// Content negotiation: check Accept header for binary format
+	accept := r.Header.Get("Accept")
+	if accept == hiscore.BinaryContentType {
+		data, err := hiscore.EncodeDeltaSummaryBinary(result)
+		if err != nil {
+			sh.logger.ErrorArgs(r.Context(), "Failed to encode binary response: %+v", err)
+			hz_handler.Error(w, service_error.Internal, "Failed to encode response.")
+			return
+		}
+		w.Header().Set("Content-Type", hiscore.BinaryContentType)
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+		return
+	}
+
+	// Default: JSON response
 	response := api.GetSnapshotWithDeltasResponse{
 		Snapshot: result.Snapshot.ToAPI(),
 		Deltas:   delta.HiscoreDelta{}.ManyToAPI(result.Deltas),

@@ -366,3 +366,28 @@ func ActivityTypeFromValue(value string) ActivityType {
 	}
 	return ActivityTypeUnknown
 }
+
+// activityTypeToIndex maps activity types to their byte index for binary encoding
+var activityTypeToIndex = func() map[ActivityType]uint8 {
+	m := make(map[ActivityType]uint8, len(AllActivityTypes))
+	for i, at := range AllActivityTypes {
+		m[at] = uint8(i)
+	}
+	return m
+}()
+
+// ToIndex returns the byte index for this activity type (for binary encoding)
+func (at ActivityType) ToIndex() uint8 {
+	if idx, ok := activityTypeToIndex[at]; ok {
+		return idx
+	}
+	return 0 // UNKNOWN
+}
+
+// ActivityTypeFromIndex returns the ActivityType for the given byte index
+func ActivityTypeFromIndex(idx uint8) ActivityType {
+	if int(idx) < len(AllActivityTypes) {
+		return AllActivityTypes[idx]
+	}
+	return ActivityTypeUnknown
+}

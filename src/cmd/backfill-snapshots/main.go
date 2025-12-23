@@ -5,7 +5,7 @@ import (
 	"github.com/ctfloyd/hazelmere-api/src/cmd/backfill-snapshots/wom"
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/snapshot"
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/user"
-	"github.com/ctfloyd/hazelmere-api/src/internal/initi
+	"github.com/ctfloyd/hazelmere-api/src/internal/initialize"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_config"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/google/uuid"
