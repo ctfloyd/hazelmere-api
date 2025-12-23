@@ -21,7 +21,8 @@
       "name": "hazelmere",
       "collections": {
         "snapshot": "snapshot",
-        "user": "user"
+        "user": "user",
+        "delta": "delta"
       }
     }
   },

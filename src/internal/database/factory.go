@@ -6,6 +6,7 @@ type MongoFactoryConfig struct {
 	DatabaseName           string
 	SnapshotCollectionName string
 	UserCollectionName     string
+	DeltaCollectionName    string
 }
 
 type MongoFactory struct {
@@ -26,4 +27,8 @@ func (mf *MongoFactory) NewSnapshotCollection() *mongo.Collection {
 
 func (mf *MongoFactory) NewUserCollection() *mongo.Collection {
 	return mf.client.Database(mf.config.DatabaseName).Collection(mf.config.UserCollectionName)
+}
+
+func (mf *MongoFactory) NewDeltaCollection() *mongo.Collection {
+	return mf.client.Database(mf.config.DatabaseName).Collection(mf.config.DeltaCollectionName)
 }

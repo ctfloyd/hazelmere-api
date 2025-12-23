@@ -5,6 +5,7 @@ const (
 	ErrorCodeBadRequest                  = "BAD_REQUEST"
 	ErrorCodeInvalidSnapshot             = "INVALID_SNAPSHOT"
 	ErrorCodeSnapshotNotFound            = "SNAPSHOT_NOT_FOUND"
+	ErrorCodeDeltaNotFound               = "DELTA_NOT_FOUND"
 	ErrorCodeUserNotFound                = "USER_NOT_FOUND"
 	ErrorCodeRunescapeNameAlreadyTracked = "RUNESCAPE_NAME_ALREADY_TRACKED"
 	ErrorCodeHiscoreTimeout              = "OSRS_HISCORE_TIMEOUT"

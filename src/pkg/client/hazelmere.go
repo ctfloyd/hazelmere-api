@@ -14,6 +14,7 @@ type Hazelmere struct {
 	Snapshot *Snapshot
 	User     *User
 	Worker   *Worker
+	Delta    *Delta
 	Config   HazelmereConfig
 }
 
@@ -36,6 +37,7 @@ func NewHazelmere(client *hz_client.HttpClient, config HazelmereConfig) (*Hazelm
 		Snapshot: newSnapshot(client, config),
 		User:     newUser(client, config),
 		Worker:   newWorker(client, config),
+		Delta:    newDelta(client, config),
 		Config:   config,
 	}, nil
 }

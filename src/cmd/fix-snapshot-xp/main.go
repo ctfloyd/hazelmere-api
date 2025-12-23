@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/ctfloyd/hazelmere-api/src/internal/initialize"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_config"
@@ -24,6 +25,8 @@ const (
 type snapshotData struct {
 	Id                      string      `bson:"_id"`
 	UserId                  string      `bson:"userId"`
+	Timestamp               time.Time   `bson:"timestamp"`
+	Source                  string      `bson:"source"`
 	OverallExperienceChange int         `bson:"overallExperienceChange"`
 	Skills                  []skillData `bson:"skills"`
 }
@@ -33,9 +36,11 @@ type skillData struct {
 	Experience   int    `bson:"experience"`
 }
 
-type updateOp struct {
+type writeOp struct {
 	id            string
 	correctChange int
+	currentChange int
+	shouldDelete  bool
 }
 
 func main() {
@@ -61,6 +66,12 @@ func main() {
 	collName := config.ValueOrPanic("mongo.database.collections.snapshot")
 	collection := client.Database(dbName).Collection(collName)
 
+	fmt.Println("=== Fix Snapshot XP Change Script ===")
+	fmt.Printf("Database: %s\n", dbName)
+	fmt.Printf("Collection: %s\n", collName)
+	fmt.Printf("Workers: %d\n", numWriteWorkers)
+	fmt.Printf("Batch Size: %d\n\n", writeBatchSize)
+
 	if err := fixSnapshotExperienceChanges(ctx, collection); err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
@@ -75,36 +86,41 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 	fmt.Printf("Total snapshots: %d\n\n", totalCount)
 
 	// Start write workers
-	updateChan := make(chan []updateOp, numWriteWorkers*2)
+	updateChan := make(chan []writeOp, numWriteWorkers*2)
 	errChan := make(chan error, numWriteWorkers)
 	var writeWg sync.WaitGroup
 	var writtenCount atomic.Int64
+	var deletedCount atomic.Int64
 
 	for i := 0; i < numWriteWorkers; i++ {
 		writeWg.Add(1)
 		go func() {
 			defer writeWg.Done()
 			for batch := range updateChan {
-				if err := writeBatch(ctx, collection, batch); err != nil {
+				updated, deleted, err := writeBatch(ctx, collection, batch)
+				if err != nil {
 					errChan <- err
 					return
 				}
-				writtenCount.Add(int64(len(batch)))
+				writtenCount.Add(int64(updated))
+				deletedCount.Add(int64(deleted))
 			}
 		}()
 	}
 
 	// Fetch sorted by userId, timestamp - this ensures we process each user's snapshots in order
+	// Don't use $elemMatch - fetch all skills and filter in code
 	opts := options.Find().
 		SetSort(bson.D{{Key: "userId", Value: 1}, {Key: "timestamp", Value: 1}}).
 		SetBatchSize(int32(fetchBatchSize)).
 		SetProjection(bson.M{
 			"_id":                     1,
 			"userId":                  1,
+			"timestamp":               1,
+			"source":                  1,
 			"overallExperienceChange": 1,
-			"skills": bson.M{
-				"$elemMatch": bson.M{"activityType": "OVERALL"},
-			},
+			"skills.activityType":     1,
+			"skills.experience":       1,
 		})
 
 	cursor, err := collection.Find(ctx, bson.M{}, opts)
@@ -113,11 +129,24 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 	}
 	defer cursor.Close(ctx)
 
-	// State tracking
-	prevUserExp := make(map[string]int) // userId -> last known experience
-	var pendingUpdates []updateOp
+	// State tracking per user
+	type userState struct {
+		lastExp       int
+		lastTimestamp time.Time
+		lastId        string
+	}
+	prevUserState := make(map[string]*userState)
+
+	var pendingOps []writeOp
 	var processedCount int64
 	var totalUpdates int64
+	var totalDeletes int64
+	var totalCorrect int64
+	var totalNoOverall int64
+	var sampleUpdates []writeOp
+	var noOverallIds []string
+
+	fmt.Println("Processing snapshots...")
 
 	for cursor.Next(ctx) {
 		var s snapshotData
@@ -126,36 +155,76 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 		}
 
 		currentExp := getOverallExp(s.Skills)
-		correctChange := 0
+		if currentExp == -1 {
+			// No OVERALL skill found - skip but count and record ID
+			totalNoOverall++
+			noOverallIds = append(noOverallIds, s.Id)
+			processedCount++
+			continue
+		}
 
-		if prevExp, exists := prevUserExp[s.UserId]; exists {
-			diff := currentExp - prevExp
+		correctChange := 0
+		state := prevUserState[s.UserId]
+
+		if state != nil {
+			diff := currentExp - state.lastExp
 			if diff > 0 {
 				correctChange = diff
+			} else if diff < 0 && s.Source == "WOM_BACKFILL_122025" {
+				// XP went down and source is WOM_BACKFILL - delete this invalid snapshot
+				pendingOps = append(pendingOps, writeOp{
+					id:           s.Id,
+					shouldDelete: true,
+				})
+				totalDeletes++
+				// Don't update state - skip this snapshot entirely
+				goto checkBatch
 			}
+			// If diff <= 0 and not WOM_BACKFILL, correctChange stays 0
 		}
 
 		if s.OverallExperienceChange != correctChange {
-			pendingUpdates = append(pendingUpdates, updateOp{
+			op := writeOp{
 				id:            s.Id,
 				correctChange: correctChange,
-			})
+				currentChange: s.OverallExperienceChange,
+			}
+			pendingOps = append(pendingOps, op)
 			totalUpdates++
+
+			// Capture first 10 sample updates for output
+			if len(sampleUpdates) < 10 {
+				sampleUpdates = append(sampleUpdates, op)
+			}
+		} else {
+			totalCorrect++
 		}
 
+		// Update state for this user
+		if state == nil {
+			prevUserState[s.UserId] = &userState{
+				lastExp:       currentExp,
+				lastTimestamp: s.Timestamp,
+				lastId:        s.Id,
+			}
+		} else {
+			state.lastExp = currentExp
+			state.lastTimestamp = s.Timestamp
+			state.lastId = s.Id
+		}
+
+	checkBatch:
 		// Send batch to writers when full
-		if len(pendingUpdates) >= writeBatchSize {
-			updateChan <- pendingUpdates
-			pendingUpdates = nil
+		if len(pendingOps) >= writeBatchSize {
+			updateChan <- pendingOps
+			pendingOps = nil
 		}
-
-		prevUserExp[s.UserId] = currentExp
 		processedCount++
 
 		if processedCount%5000 == 0 {
 			pct := float64(processedCount) / float64(totalCount) * 100
-			fmt.Printf("Progress: %d/%d (%.1f%%) - Updates queued: %d - Written: %d\n",
-				processedCount, totalCount, pct, totalUpdates, writtenCount.Load())
+			fmt.Printf("Progress: %d/%d (%.1f%%) | Correct: %d | Updates: %d (written: %d) | Deletes: %d (deleted: %d) | NoOverall: %d\n",
+				processedCount, totalCount, pct, totalCorrect, totalUpdates, writtenCount.Load(), totalDeletes, deletedCount.Load(), totalNoOverall)
 		}
 	}
 
@@ -163,9 +232,9 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 		return fmt.Errorf("cursor error: %w", err)
 	}
 
-	// Send remaining updates
-	if len(pendingUpdates) > 0 {
-		updateChan <- pendingUpdates
+	// Send remaining operations
+	if len(pendingOps) > 0 {
+		updateChan <- pendingOps
 	}
 	close(updateChan)
 
@@ -179,7 +248,37 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 		}
 	}
 
-	fmt.Printf("\nComplete! Processed: %d, Updated: %d\n", processedCount, writtenCount.Load())
+	fmt.Printf("\n")
+	fmt.Printf("=====================================\n")
+	fmt.Printf("              COMPLETE               \n")
+	fmt.Printf("=====================================\n")
+	fmt.Printf("Total processed:     %d\n", processedCount)
+	fmt.Printf("Already correct:     %d\n", totalCorrect)
+	fmt.Printf("Updated:             %d\n", writtenCount.Load())
+	fmt.Printf("Deleted:             %d\n", deletedCount.Load())
+	fmt.Printf("No OVERALL skill:    %d\n", totalNoOverall)
+	fmt.Printf("Users tracked:       %d\n", len(prevUserState))
+	fmt.Printf("=====================================\n")
+
+	// Show sample updates
+	if len(sampleUpdates) > 0 {
+		fmt.Printf("\n--- Sample Updates (first %d) ---\n", len(sampleUpdates))
+		for i, op := range sampleUpdates {
+			fmt.Printf("%d. ID: %s\n", i+1, op.id)
+			fmt.Printf("   Current value: %d -> Correct value: %d\n", op.currentChange, op.correctChange)
+		}
+		fmt.Printf("---------------------------------\n")
+	}
+
+	// Show IDs of snapshots missing OVERALL skill
+	if len(noOverallIds) > 0 {
+		fmt.Printf("\n--- Snapshots Missing OVERALL Skill (%d) ---\n", len(noOverallIds))
+		for _, id := range noOverallIds {
+			fmt.Println(id)
+		}
+		fmt.Printf("--------------------------------------------\n")
+	}
+
 	return nil
 }
 
@@ -189,20 +288,29 @@ func getOverallExp(skills []skillData) int {
 			return skill.Experience
 		}
 	}
-	return 0
+	return -1 // Return -1 to indicate not found (0 could be valid)
 }
 
-func writeBatch(ctx context.Context, collection *mongo.Collection, updates []updateOp) error {
-	var ops []mongo.WriteModel
-	for _, u := range updates {
-		op := mongo.NewUpdateOneModel().
-			SetFilter(bson.M{"_id": u.id}).
-			SetUpdate(bson.M{"$set": bson.M{"overallExperienceChange": u.correctChange}})
-		ops = append(ops, op)
+func writeBatch(ctx context.Context, collection *mongo.Collection, ops []writeOp) (updated int, deleted int, err error) {
+	var writeOps []mongo.WriteModel
+	for _, op := range ops {
+		if op.shouldDelete {
+			writeOps = append(writeOps, mongo.NewDeleteOneModel().SetFilter(bson.M{"_id": op.id}))
+			deleted++
+		} else {
+			writeOps = append(writeOps, mongo.NewUpdateOneModel().
+				SetFilter(bson.M{"_id": op.id}).
+				SetUpdate(bson.M{"$set": bson.M{"overallExperienceChange": op.correctChange}}))
+			updated++
+		}
 	}
 
-	if _, err := collection.BulkWrite(ctx, ops); err != nil {
-		return fmt.Errorf("bulk write failed: %w", err)
+	if len(writeOps) == 0 {
+		return 0, 0, nil
 	}
-	return nil
+
+	if _, err := collection.BulkWrite(ctx, writeOps); err != nil {
+		return 0, 0, fmt.Errorf("bulk write failed: %w", err)
+	}
+	return updated, deleted, nil
 }

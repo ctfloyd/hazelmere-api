@@ -2,19 +2,21 @@ package internal
 
 import (
 	"context"
-	"github.com/ctfloyd/hazelmere-api/src/internal/common/handler"
-	"github.com/ctfloyd/hazelmere-api/src/internal/common/health"
+	"net/http"
+
+	"github.com/ctfloyd/hazelmere-api/src/internal/core/delta"
+	"github.com/ctfloyd/hazelmere-api/src/internal/core/hiscore"
+	"github.com/ctfloyd/hazelmere-api/src/internal/core/snapshot"
+	"github.com/ctfloyd/hazelmere-api/src/internal/core/user"
+	"github.com/ctfloyd/hazelmere-api/src/internal/core/worker"
 	"github.com/ctfloyd/hazelmere-api/src/internal/database"
 	"github.com/ctfloyd/hazelmere-api/src/internal/initialize"
-	"github.com/ctfloyd/hazelmere-api/src/internal/middleware"
-	"github.com/ctfloyd/hazelmere-api/src/internal/snapshot"
-	"github.com/ctfloyd/hazelmere-api/src/internal/user"
-	"github.com/ctfloyd/hazelmere-api/src/internal/worker"
+	"github.com/ctfloyd/hazelmere-api/src/internal/rest/handler"
+	"github.com/ctfloyd/hazelmere-api/src/internal/rest/middleware"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_config"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/go-chi/chi/v5"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"net/http"
 )
 
 type Application struct {
@@ -44,31 +46,45 @@ func (app *Application) Init(logger hz_logger.Logger, config *hz_config.Config) 
 		DatabaseName:           config.ValueOrPanic("mongo.database.name"),
 		SnapshotCollectionName: config.ValueOrPanic("mongo.database.collections.snapshot"),
 		UserCollectionName:     config.ValueOrPanic("mongo.database.collections.user"),
+		DeltaCollectionName:    config.ValueOrPanic("mongo.database.collections.delta"),
 	})
 
 	userCollection := f.NewUserCollection()
 	userRepo := user.NewUserRepository(userCollection, logger)
 	userValidator := user.NewUserValidator()
 	userService := user.NewUserService(logger, userRepo, userValidator)
-	userHandler := user.NewUserHandler(logger, userService)
+	userHandler := handler.NewUserHandler(logger, userService)
 
+	// Initialize delta components with cache
+	deltaCollection := f.NewDeltaCollection()
+	deltaRepo := delta.NewDeltaRepository(deltaCollection, logger)
+	deltaCache := delta.NewDeltaCache()
+	deltaService := delta.NewDeltaService(logger, deltaRepo, deltaCache, userRepo)
+	deltaHandler := handler.NewDeltaHandler(logger, deltaService)
+
+	// Initialize snapshot components
 	snapshotCollection := f.NewSnapshotCollection()
 	snapshotRepo := snapshot.NewSnapshotRepository(snapshotCollection, logger)
 	snapshotValidator := snapshot.NewSnapshotValidator()
-	snapshotCache := snapshot.NewSnapshotCache()
-	snapshotService := snapshot.NewSnapshotService(logger, snapshotRepo, snapshotValidator, snapshotCache, userRepo)
-	snapshotHandler := snapshot.NewSnapshotHandler(logger, snapshotService)
+	snapshotService := snapshot.NewSnapshotService(logger, snapshotRepo, snapshotValidator, userRepo)
 
-	logger.Info(context.TODO(), "Starting cache priming...")
-	if err := snapshotService.PrimeCache(context.TODO()); err != nil {
-		logger.ErrorArgs(context.TODO(), "Failed to prime cache: %v", err)
+	// Initialize orchestrator (coordinates snapshot and delta creation in transactions)
+	txManager := database.NewTransactionManager(c)
+	orchestrator := hiscore.NewHiscoreOrchestrator(logger, snapshotService, deltaService, txManager)
+
+	snapshotHandler := handler.NewSnapshotHandler(logger, snapshotService, orchestrator)
+
+	// Prime delta cache
+	logger.Info(context.TODO(), "Starting delta cache priming...")
+	if err := deltaService.PrimeCache(context.TODO()); err != nil {
+		logger.ErrorArgs(context.TODO(), "Failed to prime delta cache: %v", err)
 	}
 
 	workerClient := initialize.InitWorkerClient(logger, config)
 	workerService := worker.NewWorkerService(logger, workerClient, snapshotService)
-	workerHandler := worker.NewWorkerHandler(logger, workerService)
+	workerHandler := handler.NewWorkerHandler(logger, workerService)
 
-	healthHandler := health.NewHealthHandler(logger)
+	healthHandler := handler.NewHealthHandler(logger)
 
 	authorizer := middleware.NewAuthorizer(
 		config.BoolValueOrPanic("auth.enabled"),
@@ -77,7 +93,7 @@ func (app *Application) Init(logger hz_logger.Logger, config *hz_config.Config) 
 	)
 
 	logger.Info(context.TODO(), "Init router.")
-	handlers := []handler.HazelmereHandler{healthHandler, snapshotHandler, userHandler, workerHandler}
+	handlers := []handler.HazelmereHandler{healthHandler, snapshotHandler, userHandler, workerHandler, deltaHandler}
 	for i := 0; i < len(handlers); i++ {
 		handlers[i].RegisterRoutes(app.Router, handler.ApiVersionV1, authorizer)
 	}
