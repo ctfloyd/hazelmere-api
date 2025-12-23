@@ -1,0 +1,40 @@
+package snapshot
+
+import "time"
+
+type HiscoreSnapshotData struct {
+	Id                      string                 `bson:"_id"`
+	UserId                  string                 `bson:"userId"`
+	Timestamp               time.Time              `bson:"timestamp"`
+	Skills                  []SkillSnapshotData    `bson:"skills"`
+	Bosses                  []BossSnapshotData     `bson:"bosses"`
+	Activities              []ActivitySnapshotData `bson:"activities"`
+	OverallExperienceChange int                    `bson:"overallExperienceChange"`
+	Source                  string                 `bson:"source"`
+}
+
+type HiscoreTimestampData struct {
+	Timestamp time.Time `bson:"timestamp"`
+}
+
+type SkillSnapshotData struct {
+	ActivityType string `bson:"activityType"`
+	Name         string `bson:"name"`
+	Level        int    `bson:"level"`
+	Experience   int    `bson:"experience"`
+	Rank         int    `bson:"rank"`
+}
+
+type BossSnapshotData struct {
+	ActivityType string `bson:"activityType"`
+	Name         string `bson:"name"`
+	KillCount    int    `bson:"killCount"`
+	Rank         int    `bson:"rank"`
+}
+
+type ActivitySnapshotData struct {
+	ActivityType string `bson:"activityType"`
+	Name         string `bson:"name"`
+	Score        int    `bson:"score"`
+	Rank         int    `bson:"rank"`
+}
