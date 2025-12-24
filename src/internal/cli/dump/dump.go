@@ -1,4 +1,4 @@
-package main
+package dump
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -31,13 +30,6 @@ type collectionResult struct {
 	err      error
 }
 
-type progressUpdate struct {
-	collName     string
-	current      int64
-	total        int64
-	bytesWritten int64
-}
-
 // batchJob represents a single batch of work to fetch and convert
 type batchJob struct {
 	collName   string
@@ -58,16 +50,16 @@ type batchResult struct {
 	err       error
 }
 
-func main() {
+func Run(configPath string, args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
 	// Parse output directory from args or use default
-	outputDir := getOutputDir()
+	outputDir := getOutputDir(args)
 
-	config := hz_config.NewConfigFromPath("config/dev.json")
+	config := hz_config.NewConfigFromPath(configPath)
 	if err := config.Read(); err != nil {
-		panic(err)
+		return fmt.Errorf("failed to read config: %w", err)
 	}
 
 	client, err := initialize.MongoClient(
@@ -76,7 +68,7 @@ func main() {
 		config.ValueOrPanic("mongo.connection.password"),
 	)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to connect to MongoDB: %w", err)
 	}
 	defer initialize.MongoCleanup(ctx, client)
 
@@ -86,17 +78,14 @@ func main() {
 	fmt.Println("=== MongoDB Collection Dump ===")
 	fmt.Printf("Database: %s\n", dbName)
 	fmt.Printf("Output Directory: %s\n", outputDir)
-	fmt.Printf("Workers: %d\n\n", runtime.NumCPU())
+	fmt.Printf("Global Workers: %d\n\n", globalWorkers)
 
-	if err := dumpAllCollections(ctx, db, outputDir); err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
-	}
+	return dumpAllCollections(ctx, db, outputDir)
 }
 
-func getOutputDir() string {
-	if len(os.Args) > 1 {
-		return os.Args[1]
+func getOutputDir(args []string) string {
+	if len(args) > 0 {
+		return args[0]
 	}
 
 	// Default to ~/Documents/hazelmere_dmp_<date>
@@ -199,7 +188,6 @@ func dumpAllCollections(ctx context.Context, db *mongo.Database, outputDir strin
 	for _, collName := range collections {
 		count := collectionCounts[collName]
 		if count == 0 {
-			// Signal empty collection
 			close(resultChans[collName])
 			continue
 		}
@@ -297,11 +285,9 @@ func dumpAllCollections(ctx context.Context, db *mongo.Database, outputDir strin
 	return nil
 }
 
-// processBatchJob fetches and converts a batch to JSON, sending result to the collection's writer
 func processBatchJob(ctx context.Context, workerID int, job batchJob) {
 	fetchStart := time.Now()
 
-	// Fetch batch
 	opts := options.Find().
 		SetBatchSize(int32(job.limit)).
 		SetLimit(job.limit).
@@ -370,7 +356,6 @@ func processBatchJob(ctx context.Context, workerID int, job batchJob) {
 
 	jsonTime := time.Since(jsonStart)
 
-	// Check for errors
 	for i, err := range jsonErrors {
 		if err != nil {
 			job.resultChan <- batchResult{batchNum: job.batchNum, err: fmt.Errorf("json marshal doc %d: %w", i, err)}
@@ -391,7 +376,6 @@ func processBatchJob(ctx context.Context, workerID int, job batchJob) {
 	}
 }
 
-// writeCollectionBatches receives batch results and writes them to file in order
 func writeCollectionBatches(ctx context.Context, collName string, outputDir string, expectedCount int64, numBatches int, resultChan <-chan batchResult, activeWorkers *atomic.Int32) collectionResult {
 	start := time.Now()
 	result := collectionResult{name: collName}
@@ -410,7 +394,6 @@ func writeCollectionBatches(ctx context.Context, collName string, outputDir stri
 
 	fmt.Printf("  START   [%s]: Expecting %d documents in %d batches\n", collName, expectedCount, numBatches)
 
-	// Create output file
 	outputPath := filepath.Join(outputDir, fmt.Sprintf("%s.json", collName))
 	file, err := os.Create(outputPath)
 	if err != nil {
@@ -427,24 +410,20 @@ func writeCollectionBatches(ctx context.Context, collName string, outputDir stri
 		return result
 	}
 
-	// Buffer to hold out-of-order batches
 	pendingBatches := make(map[int]batchResult)
 	nextBatchToWrite := 0
 	var totalDocCount int64
 	var bytesWritten int64
 	first := true
 
-	// Receive and write batches in order
 	for batchResult := range resultChan {
 		if batchResult.err != nil {
 			result.err = batchResult.err
 			return result
 		}
 
-		// Store batch (might be out of order)
 		pendingBatches[batchResult.batchNum] = batchResult
 
-		// Write any consecutive batches we can
 		for {
 			batch, ok := pendingBatches[nextBatchToWrite]
 			if !ok {
@@ -452,7 +431,6 @@ func writeCollectionBatches(ctx context.Context, collName string, outputDir stri
 			}
 			delete(pendingBatches, nextBatchToWrite)
 
-			// Write this batch
 			writeStart := time.Now()
 			for _, extJSON := range batch.jsonDocs {
 				if !first {
@@ -486,7 +464,6 @@ func writeCollectionBatches(ctx context.Context, collName string, outputDir stri
 		}
 	}
 
-	// Write closing bracket
 	if _, err := bufWriter.WriteString("\n]"); err != nil {
 		result.err = fmt.Errorf("failed to write closing bracket: %w", err)
 		return result
@@ -520,7 +497,6 @@ func formatBytes(bytes int64) string {
 	}
 }
 
-// bufferedFileWriter wraps a file with a buffer for better write performance
 type bufferedFileWriter struct {
 	file   *os.File
 	buffer []byte

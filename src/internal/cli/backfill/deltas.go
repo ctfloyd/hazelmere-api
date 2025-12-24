@@ -1,4 +1,4 @@
-package main
+package backfill
 
 import (
 	"context"
@@ -95,13 +95,13 @@ type userResult struct {
 	err           error
 }
 
-func main() {
+func RunDeltas(configPath string, args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	config := hz_config.NewConfigFromPath("config/dev.json")
+	config := hz_config.NewConfigFromPath(configPath)
 	if err := config.Read(); err != nil {
-		panic(err)
+		return fmt.Errorf("failed to read config: %w", err)
 	}
 
 	client, err := initialize.MongoClient(
@@ -110,7 +110,7 @@ func main() {
 		config.ValueOrPanic("mongo.connection.password"),
 	)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to connect to MongoDB: %w", err)
 	}
 	defer initialize.MongoCleanup(ctx, client)
 
@@ -128,14 +128,10 @@ func main() {
 	fmt.Printf("Workers: %d\n", numUserWorkers)
 	fmt.Printf("Batch Size: %d\n\n", writeBatchSize)
 
-	if err := backfillDeltas(ctx, snapshotCollection, deltaCollection); err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
-	}
+	return backfillDeltas(ctx, snapshotCollection, deltaCollection)
 }
 
 func backfillDeltas(ctx context.Context, snapshotCollection, deltaCollection *mongo.Collection) error {
-	// Get distinct user IDs
 	fmt.Println("Fetching distinct user IDs...")
 	result := snapshotCollection.Distinct(ctx, "userId", bson.M{})
 	var userIds []interface{}
@@ -146,7 +142,6 @@ func backfillDeltas(ctx context.Context, snapshotCollection, deltaCollection *mo
 	totalUsers := len(userIds)
 	fmt.Printf("Found %d users to process\n\n", totalUsers)
 
-	// Channel for user IDs to process
 	userChan := make(chan string, numUserWorkers*2)
 	resultChan := make(chan userResult, numUserWorkers*2)
 	var wg sync.WaitGroup
@@ -159,11 +154,9 @@ func backfillDeltas(ctx context.Context, snapshotCollection, deltaCollection *mo
 	var errorCount atomic.Int64
 	var skippedUsers atomic.Int64
 
-	// Slice to collect all deltas for memory estimation
 	var allDeltasMu sync.Mutex
 	var allDeltas []deltaData
 
-	// Start result collector goroutine
 	done := make(chan struct{})
 	go func() {
 		for res := range resultChan {
@@ -196,7 +189,6 @@ func backfillDeltas(ctx context.Context, snapshotCollection, deltaCollection *mo
 		close(done)
 	}()
 
-	// Start worker goroutines
 	for i := 0; i < numUserWorkers; i++ {
 		wg.Add(1)
 		go func(workerID int) {
@@ -219,7 +211,6 @@ func backfillDeltas(ctx context.Context, snapshotCollection, deltaCollection *mo
 						res.totalXpGain += d.TotalExperienceGain
 					}
 
-					// Collect deltas for memory estimation
 					allDeltasMu.Lock()
 					allDeltas = append(allDeltas, deltas...)
 					allDeltasMu.Unlock()
@@ -237,7 +228,6 @@ func backfillDeltas(ctx context.Context, snapshotCollection, deltaCollection *mo
 		}(i)
 	}
 
-	// Send user IDs to workers
 	for _, uid := range userIds {
 		userId, ok := uid.(string)
 		if !ok {
@@ -247,11 +237,8 @@ func backfillDeltas(ctx context.Context, snapshotCollection, deltaCollection *mo
 	}
 	close(userChan)
 
-	// Wait for all workers to finish
 	wg.Wait()
 	close(resultChan)
-
-	// Wait for result collector to finish
 	<-done
 
 	fmt.Printf("\n")
@@ -268,62 +255,12 @@ func backfillDeltas(ctx context.Context, snapshotCollection, deltaCollection *mo
 	fmt.Printf("Total boss changes:   %d\n", totalBossChanges.Load())
 	fmt.Printf("Total activity changes: %d\n", totalActivityChanges.Load())
 	fmt.Printf("Total XP gained:      %d\n", totalXpGain.Load())
-	fmt.Printf("-------------------------------------\n")
-
-	// Memory estimation
-	avgDeltaSize := 1500 // ~1.5KB per delta estimate
-	memoryUsageMB := float64(len(allDeltas)*avgDeltaSize) / (1024 * 1024)
-	fmt.Printf("Deltas in memory:     %d\n", len(allDeltas))
-	fmt.Printf("Est. memory usage:    %.2f MB\n", memoryUsageMB)
 	fmt.Printf("=====================================\n")
-
-	// Print sample deltas if any exist
-	if len(allDeltas) > 0 {
-		fmt.Printf("\n--- Sample Delta (first one) ---\n")
-		sample := allDeltas[0]
-		fmt.Printf("ID: %s\n", sample.Id)
-		fmt.Printf("User: %s\n", sample.UserId)
-		fmt.Printf("Timestamp: %s\n", sample.Timestamp.Format(time.RFC3339))
-		fmt.Printf("Snapshot: %s -> %s\n", sample.PreviousSnapshotId, sample.SnapshotId)
-		fmt.Printf("Total XP Gain: %d\n", sample.TotalExperienceGain)
-		if len(sample.Skills) > 0 {
-			fmt.Printf("Skill changes (%d):\n", len(sample.Skills))
-			for i, s := range sample.Skills {
-				if i >= 5 {
-					fmt.Printf("  ... and %d more\n", len(sample.Skills)-5)
-					break
-				}
-				fmt.Printf("  - %s (%s): +%d xp, +%d levels\n", s.Name, s.ActivityType, s.ExperienceGain, s.LevelGain)
-			}
-		}
-		if len(sample.Bosses) > 0 {
-			fmt.Printf("Boss changes (%d):\n", len(sample.Bosses))
-			for i, b := range sample.Bosses {
-				if i >= 5 {
-					fmt.Printf("  ... and %d more\n", len(sample.Bosses)-5)
-					break
-				}
-				fmt.Printf("  - %s (%s): +%d kc\n", b.Name, b.ActivityType, b.KillCountGain)
-			}
-		}
-		if len(sample.Activities) > 0 {
-			fmt.Printf("Activity changes (%d):\n", len(sample.Activities))
-			for i, a := range sample.Activities {
-				if i >= 5 {
-					fmt.Printf("  ... and %d more\n", len(sample.Activities)-5)
-					break
-				}
-				fmt.Printf("  - %s (%s): +%d score\n", a.Name, a.ActivityType, a.ScoreGain)
-			}
-		}
-		fmt.Printf("--------------------------------\n")
-	}
 
 	return nil
 }
 
 func processUser(ctx context.Context, snapshotCollection, deltaCollection *mongo.Collection, userId string) ([]deltaData, int, error) {
-	// Fetch all snapshots for user sorted by timestamp
 	opts := options.Find().
 		SetSort(bson.D{{Key: "timestamp", Value: 1}})
 
@@ -340,10 +277,9 @@ func processUser(ctx context.Context, snapshotCollection, deltaCollection *mongo
 
 	snapshotCount := len(snapshots)
 	if snapshotCount < 2 {
-		return nil, snapshotCount, nil // Need at least 2 snapshots to compute deltas
+		return nil, snapshotCount, nil
 	}
 
-	// Compute deltas between consecutive snapshots
 	var deltas []deltaData
 	for i := 1; i < len(snapshots); i++ {
 		prev := snapshots[i-1]
@@ -351,7 +287,6 @@ func processUser(ctx context.Context, snapshotCollection, deltaCollection *mongo
 
 		delta := computeDelta(prev, curr)
 
-		// Only include if there are actual changes
 		if len(delta.Skills) > 0 || len(delta.Bosses) > 0 || len(delta.Activities) > 0 {
 			deltas = append(deltas, delta)
 		}
@@ -361,7 +296,6 @@ func processUser(ctx context.Context, snapshotCollection, deltaCollection *mongo
 		return nil, snapshotCount, nil
 	}
 
-	// Write deltas in batches
 	for i := 0; i < len(deltas); i += writeBatchSize {
 		end := i + writeBatchSize
 		if end > len(deltas) {
@@ -376,7 +310,6 @@ func processUser(ctx context.Context, snapshotCollection, deltaCollection *mongo
 
 		_, err := deltaCollection.InsertMany(ctx, docs, options.InsertMany().SetOrdered(false))
 		if err != nil {
-			// Ignore duplicate key errors (deltas might already exist)
 			if !mongo.IsDuplicateKeyError(err) {
 				return nil, snapshotCount, fmt.Errorf("failed to insert deltas: %w", err)
 			}
@@ -423,7 +356,6 @@ func computeSkillDeltas(prev, curr []skillData) []skillDeltaData {
 			continue
 		}
 
-		// Skip if either value is -1 (unranked/unknown)
 		if c.Experience < 0 || p.Experience < 0 {
 			continue
 		}
@@ -431,7 +363,6 @@ func computeSkillDeltas(prev, curr []skillData) []skillDeltaData {
 		xpGain := c.Experience - p.Experience
 		levelGain := c.Level - p.Level
 
-		// Only record positive gains (ignore data corrections/resets)
 		if xpGain > 0 || levelGain > 0 {
 			deltas = append(deltas, skillDeltaData{
 				ActivityType:   c.ActivityType,
@@ -465,14 +396,12 @@ func computeBossDeltas(prev, curr []bossData) []bossDeltaData {
 			continue
 		}
 
-		// Skip if either value is -1 (unranked/unknown)
 		if c.KillCount < 0 || p.KillCount < 0 {
 			continue
 		}
 
 		kcGain := c.KillCount - p.KillCount
 
-		// Only record positive gains
 		if kcGain > 0 {
 			deltas = append(deltas, bossDeltaData{
 				ActivityType:  c.ActivityType,
@@ -505,14 +434,12 @@ func computeActivityDeltas(prev, curr []activityData) []activityDeltaData {
 			continue
 		}
 
-		// Skip if either value is -1 (unranked/unknown)
 		if c.Score < 0 || p.Score < 0 {
 			continue
 		}
 
 		scoreGain := c.Score - p.Score
 
-		// Only record positive gains
 		if scoreGain > 0 {
 			deltas = append(deltas, activityDeltaData{
 				ActivityType: c.ActivityType,

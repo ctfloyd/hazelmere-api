@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ctfloyd/hazelmere-commons/pkg/hz_client"
-	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"log/slog"
 	"time"
+
+	"github.com/ctfloyd/hazelmere-commons/pkg/hz_client"
+	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 )
 
 const requestsPerMinute = 7

@@ -1,4 +1,4 @@
-package main
+package fix
 
 import (
 	"context"
@@ -43,13 +43,13 @@ type writeOp struct {
 	shouldDelete  bool
 }
 
-func main() {
+func RunSnapshotXP(configPath string, args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	config := hz_config.NewConfigFromPath("config/dev.json")
+	config := hz_config.NewConfigFromPath(configPath)
 	if err := config.Read(); err != nil {
-		panic(err)
+		return fmt.Errorf("failed to read config: %w", err)
 	}
 
 	client, err := initialize.MongoClient(
@@ -58,7 +58,7 @@ func main() {
 		config.ValueOrPanic("mongo.connection.password"),
 	)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to connect to MongoDB: %w", err)
 	}
 	defer initialize.MongoCleanup(ctx, client)
 
@@ -72,10 +72,7 @@ func main() {
 	fmt.Printf("Workers: %d\n", numWriteWorkers)
 	fmt.Printf("Batch Size: %d\n\n", writeBatchSize)
 
-	if err := fixSnapshotExperienceChanges(ctx, collection); err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
-	}
+	return fixSnapshotExperienceChanges(ctx, collection)
 }
 
 func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collection) error {
@@ -85,7 +82,6 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 	}
 	fmt.Printf("Total snapshots: %d\n\n", totalCount)
 
-	// Start write workers
 	updateChan := make(chan []writeOp, numWriteWorkers*2)
 	errChan := make(chan error, numWriteWorkers)
 	var writeWg sync.WaitGroup
@@ -108,8 +104,6 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 		}()
 	}
 
-	// Fetch sorted by userId, timestamp - this ensures we process each user's snapshots in order
-	// Don't use $elemMatch - fetch all skills and filter in code
 	opts := options.Find().
 		SetSort(bson.D{{Key: "userId", Value: 1}, {Key: "timestamp", Value: 1}}).
 		SetBatchSize(int32(fetchBatchSize)).
@@ -129,7 +123,6 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 	}
 	defer cursor.Close(ctx)
 
-	// State tracking per user
 	type userState struct {
 		lastExp       int
 		lastTimestamp time.Time
@@ -156,7 +149,6 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 
 		currentExp := getOverallExp(s.Skills)
 		if currentExp == -1 {
-			// No OVERALL skill found - skip but count and record ID
 			totalNoOverall++
 			noOverallIds = append(noOverallIds, s.Id)
 			processedCount++
@@ -171,16 +163,13 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 			if diff > 0 {
 				correctChange = diff
 			} else if diff < 0 && s.Source == "WOM_BACKFILL_122025" {
-				// XP went down and source is WOM_BACKFILL - delete this invalid snapshot
 				pendingOps = append(pendingOps, writeOp{
 					id:           s.Id,
 					shouldDelete: true,
 				})
 				totalDeletes++
-				// Don't update state - skip this snapshot entirely
 				goto checkBatch
 			}
-			// If diff <= 0 and not WOM_BACKFILL, correctChange stays 0
 		}
 
 		if s.OverallExperienceChange != correctChange {
@@ -192,7 +181,6 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 			pendingOps = append(pendingOps, op)
 			totalUpdates++
 
-			// Capture first 10 sample updates for output
 			if len(sampleUpdates) < 10 {
 				sampleUpdates = append(sampleUpdates, op)
 			}
@@ -200,7 +188,6 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 			totalCorrect++
 		}
 
-		// Update state for this user
 		if state == nil {
 			prevUserState[s.UserId] = &userState{
 				lastExp:       currentExp,
@@ -214,7 +201,6 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 		}
 
 	checkBatch:
-		// Send batch to writers when full
 		if len(pendingOps) >= writeBatchSize {
 			updateChan <- pendingOps
 			pendingOps = nil
@@ -232,13 +218,11 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 		return fmt.Errorf("cursor error: %w", err)
 	}
 
-	// Send remaining operations
 	if len(pendingOps) > 0 {
 		updateChan <- pendingOps
 	}
 	close(updateChan)
 
-	// Wait for writers to finish
 	writeWg.Wait()
 	close(errChan)
 
@@ -260,7 +244,6 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 	fmt.Printf("Users tracked:       %d\n", len(prevUserState))
 	fmt.Printf("=====================================\n")
 
-	// Show sample updates
 	if len(sampleUpdates) > 0 {
 		fmt.Printf("\n--- Sample Updates (first %d) ---\n", len(sampleUpdates))
 		for i, op := range sampleUpdates {
@@ -270,7 +253,6 @@ func fixSnapshotExperienceChanges(ctx context.Context, collection *mongo.Collect
 		fmt.Printf("---------------------------------\n")
 	}
 
-	// Show IDs of snapshots missing OVERALL skill
 	if len(noOverallIds) > 0 {
 		fmt.Printf("\n--- Snapshots Missing OVERALL Skill (%d) ---\n", len(noOverallIds))
 		for _, id := range noOverallIds {
@@ -288,7 +270,7 @@ func getOverallExp(skills []skillData) int {
 			return skill.Experience
 		}
 	}
-	return -1 // Return -1 to indicate not found (0 could be valid)
+	return -1
 }
 
 func writeBatch(ctx context.Context, collection *mongo.Collection, ops []writeOp) (updated int, deleted int, err error) {

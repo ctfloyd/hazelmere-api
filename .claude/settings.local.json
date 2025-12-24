@@ -10,7 +10,8 @@
       "Bash(cat:*)",
       "Bash(go get:*)",
       "WebSearch",
-      "Bash(dir /b \"C:\\\\Users\\\\caleb\\\\GolandProjects\\\\hazelmere-api\\\\src\\\\internal\")"
+      "Bash(dir /b \"C:\\\\Users\\\\caleb\\\\GolandProjects\\\\hazelmere-api\\\\src\\\\internal\")",
+      "Bash(dir /b \"C:\\\\Users\\\\caleb\\\\GolandProjects\\\\hazelmere-api\\\\src\\\\cmd\")"
     ],
     "deny": [],
     "ask": []
