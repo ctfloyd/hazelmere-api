@@ -9,14 +9,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-      - name: Create tag
-        id: tag
-        run: echo "TAG=v0.0.${{ github.run_number }}" >> $GITHUB_ENV
+      - name: Install mise
+        uses: jdx/mise-action@v2
+
+      - name: Get next version
+        id: version
+        run: |
+          TAG=$(svu next)
+          echo "TAG=$TAG" >> $GITHUB_ENV
 
       - name: Push tag
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
-          git tag ${{ env.TAG }}
+          git tag -a ${{ env.TAG }} -m "release version ${{ env.TAG }}"
           git push origin ${{ env.TAG }}
