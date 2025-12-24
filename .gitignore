@@ -1,3 +1,5 @@
 .idea
-main.exe
 out
+bin
+*.exe
+.claude
