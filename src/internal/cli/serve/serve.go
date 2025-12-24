@@ -8,6 +8,7 @@ import (
 	"os/signal"
 
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/delta"
+	"github.com/ctfloyd/hazelmere-api/src/internal/core/health"
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/hiscore"
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/snapshot"
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/user"
@@ -26,9 +27,12 @@ func Run(configPath string, args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	config := hz_config.NewConfigFromPath(configPath)
+	// Use environment-based config if no explicit config path provided
+	effectiveConfigPath := resolveConfigPath(configPath)
+
+	config := hz_config.NewConfigFromPath(effectiveConfigPath)
 	if err := config.Read(); err != nil {
-		return fmt.Errorf("failed to read config: %w", err)
+		return fmt.Errorf("failed to read config from %s: %w", effectiveConfigPath, err)
 	}
 
 	logger := hz_logger.NewZeroLogAdapater(hz_logger.LogLevelFromString(config.ValueOrPanic("log.level")))
@@ -59,9 +63,28 @@ func Run(configPath string, args []string) error {
 	return nil
 }
 
+// resolveConfigPath determines the config file path based on environment
+func resolveConfigPath(explicitPath string) string {
+	// If an explicit path was provided via -c flag, use it
+	if explicitPath != "config/dev.json" {
+		return explicitPath
+	}
+
+	// Check ENVIRONMENT env var
+	env := os.Getenv("ENVIRONMENT")
+	switch env {
+	case "prod", "production":
+		return "config/prod.json"
+	default:
+		return "config/dev.json"
+	}
+}
+
 func initializeApp(ctx context.Context, logger hz_logger.Logger, config *hz_config.Config, router *chi.Mux, client *mongo.Client) error {
+	dbName := config.ValueOrPanic("mongo.database.name")
+
 	f := database.NewMongoFactory(client, database.MongoFactoryConfig{
-		DatabaseName:           config.ValueOrPanic("mongo.database.name"),
+		DatabaseName:           dbName,
 		SnapshotCollectionName: config.ValueOrPanic("mongo.database.collections.snapshot"),
 		UserCollectionName:     config.ValueOrPanic("mongo.database.collections.user"),
 		DeltaCollectionName:    config.ValueOrPanic("mongo.database.collections.delta"),
@@ -102,7 +125,9 @@ func initializeApp(ctx context.Context, logger hz_logger.Logger, config *hz_conf
 	workerService := worker.NewWorkerService(logger, workerClient, snapshotService)
 	workerHandler := handler.NewWorkerHandler(logger, workerService)
 
-	healthHandler := handler.NewHealthHandler(logger)
+	// Initialize health service with MongoDB client for deep health checks
+	healthService := health.NewService(client, dbName)
+	healthHandler := handler.NewHealthHandler(logger, healthService)
 
 	authorizer := middleware.NewAuthorizer(
 		config.BoolValueOrPanic("auth.enabled"),
