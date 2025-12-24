@@ -23,7 +23,6 @@ type HealthResponse struct {
 	Environment  string             `json:"environment"`
 	Commit       string             `json:"commit"`
 	BuildTime    string             `json:"buildTime"`
-	Version      string             `json:"version"`
 	Timestamp    string             `json:"timestamp"`
 	Dependencies []DependencyStatus `json:"dependencies"`
 }
@@ -54,7 +53,6 @@ func (s *Service) Check(ctx context.Context) (HealthResponse, bool) {
 		Environment:  s.environment,
 		Commit:       info.Commit,
 		BuildTime:    info.BuildTime,
-		Version:      info.Version,
 		Timestamp:    time.Now().UTC().Format(time.RFC3339),
 		Dependencies: make([]DependencyStatus, 0),
 	}

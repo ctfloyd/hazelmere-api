@@ -5,14 +5,13 @@ BINARY_NAME := hazelmere
 BUILD_DIR := bin
 CMD_PATH := ./src/cmd/hazelmere
 
-# Version info (injected at build time)
-VERSION ?= $(shell if [ -n "$$RAILWAY_GIT_TAG" ]; then echo "$$RAILWAY_GIT_TAG"; else git fetch --tags 2>/dev/null; git describe --tags --always --dirty 2>/dev/null || echo "dev"; fi)
+# Build info (injected at build time)
 COMMIT := $(shell if [ -n "$$RAILWAY_GIT_COMMIT_SHA" ]; then echo "$$RAILWAY_GIT_COMMIT_SHA" | cut -c1-7; else git rev-parse --short HEAD 2>/dev/null || echo "unknown"; fi)
 BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 
 # Go build flags
 VERSION_PKG := github.com/ctfloyd/hazelmere-api/src/internal/version
-LDFLAGS := -ldflags "-X $(VERSION_PKG).Version=$(VERSION) -X $(VERSION_PKG).Commit=$(COMMIT) -X $(VERSION_PKG).BuildTime=$(BUILD_TIME)"
+LDFLAGS := -ldflags "-X $(VERSION_PKG).Commit=$(COMMIT) -X $(VERSION_PKG).BuildTime=$(BUILD_TIME)"
 
 # Default target
 all: build
@@ -20,21 +19,6 @@ all: build
 # Build for current platform
 build:
 	@echo "Building $(BINARY_NAME)..."
-	@echo ""
-	@echo "=== Git Debug Info ==="
-	@echo "RAILWAY_GIT_TAG:        $${RAILWAY_GIT_TAG:-<not set>}"
-	@echo "RAILWAY_GIT_COMMIT_SHA: $${RAILWAY_GIT_COMMIT_SHA:-<not set>}"
-	@echo "Git remotes:"
-	@git remote -v 2>/dev/null || echo "  <no remotes>"
-	@echo "Git tags (local):"
-	@git tag -l 2>/dev/null | head -10 || echo "  <no tags>"
-	@echo "Git describe:"
-	@git describe --tags --always --dirty 2>&1 || echo "  <failed>"
-	@echo "Git HEAD:"
-	@git rev-parse HEAD 2>/dev/null || echo "  <unknown>"
-	@echo "======================"
-	@echo ""
-	@echo "  Version:    $(VERSION)"
 	@echo "  Commit:     $(COMMIT)"
 	@echo "  Build Time: $(BUILD_TIME)"
 	@mkdir -p $(BUILD_DIR)
@@ -100,6 +84,5 @@ help:
 	@echo "  make help           Show this help"
 	@echo ""
 	@echo "Variables:"
-	@echo "  VERSION=$(VERSION)"
 	@echo "  COMMIT=$(COMMIT)"
 	@echo "  BUILD_TIME=$(BUILD_TIME)"
