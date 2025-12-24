@@ -2,6 +2,7 @@ package initialize
 
 import (
 	"context"
+	"strings"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
@@ -42,12 +43,13 @@ func InitOtel(ctx context.Context, cfg OtelConfig) (func(context.Context) error,
 		return nil, err
 	}
 
-	// Build exporter options
+	// Build exporter options with correct paths for Grafana Cloud OTLP
+	baseEndpoint := strings.TrimSuffix(cfg.Endpoint, "/")
 	traceOpts := []otlptracehttp.Option{
-		otlptracehttp.WithEndpointURL(cfg.Endpoint),
+		otlptracehttp.WithEndpointURL(baseEndpoint + "/v1/traces"),
 	}
 	metricOpts := []otlpmetrichttp.Option{
-		otlpmetrichttp.WithEndpointURL(cfg.Endpoint),
+		otlpmetrichttp.WithEndpointURL(baseEndpoint + "/v1/metrics"),
 	}
 
 	if cfg.AuthHeader != "" {
