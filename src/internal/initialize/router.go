@@ -2,6 +2,7 @@ package initialize
 
 import (
 	"net/http"
+	"regexp"
 
 	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/middleware"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
@@ -24,6 +25,9 @@ func InitRouter(log hz_logger.Logger) *chi.Mux {
 	return router
 }
 
+// routeRegexPattern matches chi route params with regex patterns like {userId:[0-9a-fA-F-]+}
+var routeRegexPattern = regexp.MustCompile(`\{(\w+):[^}]+\}`)
+
 // chiRouteLabeler adds the chi route pattern to otelhttp metrics/spans
 func chiRouteLabeler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -31,8 +35,10 @@ func chiRouteLabeler(next http.Handler) http.Handler {
 		// After handler runs, chi has resolved the route
 		routePattern := chi.RouteContext(r.Context()).RoutePattern()
 		if routePattern != "" {
+			// Simplify route pattern: {userId:[0-9a-fA-F-]+} -> {userId}
+			cleanRoute := routeRegexPattern.ReplaceAllString(routePattern, "{$1}")
 			labeler, _ := otelhttp.LabelerFromContext(r.Context())
-			labeler.Add(attribute.String("http.route", routePattern))
+			labeler.Add(attribute.String("http.route", cleanRoute))
 		}
 	})
 }

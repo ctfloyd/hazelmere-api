@@ -8,7 +8,7 @@ import (
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/delta"
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/snapshot"
 	"github.com/ctfloyd/hazelmere-api/src/internal/database"
-	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/monitor"
 	"github.com/google/uuid"
 )
 
@@ -21,20 +21,20 @@ type HiscoreOrchestrator interface {
 }
 
 type hiscoreOrchestrator struct {
-	logger          hz_logger.Logger
+	monitor         *monitor.Monitor
 	snapshotService snapshot.SnapshotService
 	deltaService    delta.DeltaService
 	txManager       *database.TransactionManager
 }
 
 func NewHiscoreOrchestrator(
-	logger hz_logger.Logger,
+	mon *monitor.Monitor,
 	snapshotService snapshot.SnapshotService,
 	deltaService delta.DeltaService,
 	txManager *database.TransactionManager,
 ) HiscoreOrchestrator {
 	return &hiscoreOrchestrator{
-		logger:          logger,
+		monitor:         mon,
 		snapshotService: snapshotService,
 		deltaService:    deltaService,
 		txManager:       txManager,
@@ -42,6 +42,9 @@ func NewHiscoreOrchestrator(
 }
 
 func (o *hiscoreOrchestrator) CreateSnapshotWithDelta(ctx context.Context, snap snapshot.HiscoreSnapshot) (CreateSnapshotResponse, error) {
+	ctx, span := o.monitor.StartSpan(ctx, "hiscoreOrchestrator.CreateSnapshotWithDelta")
+	defer span.End()
+
 	var createdSnapshot snapshot.HiscoreSnapshot
 	var createdDelta *delta.HiscoreDelta
 	var previousSnapshot snapshot.HiscoreSnapshot
@@ -64,7 +67,7 @@ func (o *hiscoreOrchestrator) CreateSnapshotWithDelta(ctx context.Context, snap 
 		createdSnapshot = created
 
 		if hasPreviousSnapshot {
-			d := o.computeDelta(previousSnapshot, createdSnapshot)
+			d := o.computeDelta(ctx, previousSnapshot, createdSnapshot)
 			insertedDelta, err := o.deltaService.CreateDelta(txCtx, d)
 			if err != nil {
 				return err
@@ -73,7 +76,7 @@ func (o *hiscoreOrchestrator) CreateSnapshotWithDelta(ctx context.Context, snap 
 			if insertedDelta.Id != "" {
 				createdDelta = &insertedDelta
 			}
-			o.logger.DebugArgs(txCtx, "Created delta for snapshot %s", createdSnapshot.Id)
+			o.monitor.Logger().DebugArgs(txCtx, "Created delta for snapshot %s", createdSnapshot.Id)
 		}
 		return nil
 	})
@@ -89,6 +92,9 @@ func (o *hiscoreOrchestrator) CreateSnapshotWithDelta(ctx context.Context, snap 
 }
 
 func (o *hiscoreOrchestrator) GetDeltaSummary(ctx context.Context, userId string, startTime, endTime time.Time) (DeltaSummaryResponse, error) {
+	ctx, span := o.monitor.StartSpan(ctx, "hiscoreOrchestrator.GetDeltaSummary")
+	defer span.End()
+
 	// Get snapshot nearest to start time
 	startMs := startTime.UnixNano() / int64(time.Millisecond)
 	snap, err := o.snapshotService.GetSnapshotForUserNearestTimestamp(ctx, userId, startMs)
@@ -111,7 +117,10 @@ func (o *hiscoreOrchestrator) GetDeltaSummary(ctx context.Context, userId string
 	}, nil
 }
 
-func (o *hiscoreOrchestrator) computeDelta(previousSnapshot, currentSnapshot snapshot.HiscoreSnapshot) delta.HiscoreDelta {
+func (o *hiscoreOrchestrator) computeDelta(ctx context.Context, previousSnapshot, currentSnapshot snapshot.HiscoreSnapshot) delta.HiscoreDelta {
+	_, span := o.monitor.StartSpan(ctx, "hiscoreOrchestrator.computeDelta")
+	defer span.End()
+
 	d := delta.HiscoreDelta{
 		Id:                 uuid.New().String(),
 		UserId:             currentSnapshot.UserId,

@@ -64,7 +64,7 @@ func RunSnapshots(configPath string, args []string) error {
 
 	backfiller := &snapshotBackfiller{
 		userRepo:     user.NewUserRepository(uCollection, mon),
-		snapshotRepo: snapshot.NewSnapshotRepository(sCollection, logger),
+		snapshotRepo: snapshot.NewSnapshotRepository(sCollection, mon),
 		wiseOldMan:   wom2.NewClient(logger),
 		activityMap:  populateActivityMap(ctx, sCollection),
 	}

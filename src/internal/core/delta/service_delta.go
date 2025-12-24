@@ -8,12 +8,10 @@ import (
 
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/user"
 	"github.com/ctfloyd/hazelmere-api/src/internal/database"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/monitor"
 	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
-	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/google/uuid"
-	"go.opentelemetry.io/otel"
 )
-
 
 const MaxIntervalDuration = 5 * 365 * 24 * time.Hour
 
@@ -35,15 +33,15 @@ type DeltaService interface {
 }
 
 type deltaService struct {
-	logger         hz_logger.Logger
+	monitor        *monitor.Monitor
 	repository     DeltaRepository
 	userRepository user.UserRepository
 	cache          *DeltaCache
 }
 
-func NewDeltaService(logger hz_logger.Logger, repository DeltaRepository, cache *DeltaCache, userRepository user.UserRepository) DeltaService {
+func NewDeltaService(mon *monitor.Monitor, repository DeltaRepository, cache *DeltaCache, userRepository user.UserRepository) DeltaService {
 	return &deltaService{
-		logger:         logger,
+		monitor:        mon,
 		repository:     repository,
 		userRepository: userRepository,
 		cache:          cache,
@@ -51,7 +49,7 @@ func NewDeltaService(logger hz_logger.Logger, repository DeltaRepository, cache 
 }
 
 func (ds *deltaService) CreateDelta(ctx context.Context, delta HiscoreDelta) (HiscoreDelta, error) {
-	ctx, span := otel.Tracer("hazelmere").Start(ctx, "deltaService.CreateDelta")
+	ctx, span := ds.monitor.StartSpan(ctx, "deltaService.CreateDelta")
 	defer span.End()
 
 	if delta.Id == "" {
@@ -60,7 +58,7 @@ func (ds *deltaService) CreateDelta(ctx context.Context, delta HiscoreDelta) (Hi
 
 	// Only insert if there are any changes
 	if len(delta.Skills) == 0 && len(delta.Bosses) == 0 && len(delta.Activities) == 0 {
-		ds.logger.DebugArgs(ctx, "No changes in delta, skipping creation for user %s", delta.UserId)
+		ds.monitor.Logger().DebugArgs(ctx, "No changes in delta, skipping creation for user %s", delta.UserId)
 		return HiscoreDelta{}, nil
 	}
 
@@ -72,24 +70,24 @@ func (ds *deltaService) CreateDelta(ctx context.Context, delta HiscoreDelta) (Hi
 	// Append to cache (doesn't invalidate existing data)
 	ds.cache.AppendDelta(delta.UserId, data)
 
-	ds.logger.DebugArgs(ctx, "Created delta %s for user %s with %d skill changes, %d boss changes, %d activity changes",
+	ds.monitor.Logger().DebugArgs(ctx, "Created delta %s for user %s with %d skill changes, %d boss changes, %d activity changes",
 		delta.Id, delta.UserId, len(delta.Skills), len(delta.Bosses), len(delta.Activities))
 
 	return HiscoreDelta{}.FromData(data), nil
 }
 
 func (ds *deltaService) GetLatestDeltaForUser(ctx context.Context, userId string) (HiscoreDelta, error) {
-	ctx, span := otel.Tracer("hazelmere").Start(ctx, "deltaService.GetLatestDeltaForUser")
+	ctx, span := ds.monitor.StartSpan(ctx, "deltaService.GetLatestDeltaForUser")
 	defer span.End()
 
 	// Check cache first - returns domain type directly
 	if delta, found := ds.cache.GetLatestDelta(userId); found {
-		ds.logger.DebugArgs(ctx, "Cache hit for latest delta for user %s", userId)
+		ds.monitor.Logger().DebugArgs(ctx, "Cache hit for latest delta for user %s", userId)
 		return delta, nil
 	}
 
 	// Fall back to repository - returns data type, needs conversion
-	ds.logger.DebugArgs(ctx, "Cache miss for latest delta for user %s, falling back to repository", userId)
+	ds.monitor.Logger().DebugArgs(ctx, "Cache miss for latest delta for user %s, falling back to repository", userId)
 	data, err := ds.repository.GetLatestDeltaForUser(ctx, userId)
 	if err != nil {
 		if errors.Is(err, database.ErrNotFound) {
@@ -101,7 +99,7 @@ func (ds *deltaService) GetLatestDeltaForUser(ctx context.Context, userId string
 }
 
 func (ds *deltaService) GetDeltasInRange(ctx context.Context, userId string, startTime, endTime time.Time) (DeltaIntervalResponse, error) {
-	ctx, span := otel.Tracer("hazelmere").Start(ctx, "deltaService.GetDeltasInRange")
+	ctx, span := ds.monitor.StartSpan(ctx, "deltaService.GetDeltasInRange")
 	defer span.End()
 
 	startTime, endTime, err := validateDeltaInterval(startTime, endTime)
@@ -111,7 +109,7 @@ func (ds *deltaService) GetDeltasInRange(ctx context.Context, userId string, sta
 
 	// Check cache first - returns domain types directly (pre-aggregated by day)
 	if deltas, found := ds.cache.GetDeltasInRange(userId, startTime, endTime); found {
-		ds.logger.DebugArgs(ctx, "Cache hit for deltas in range for user %s", userId)
+		ds.monitor.Logger().DebugArgs(ctx, "Cache hit for deltas in range for user %s", userId)
 		return DeltaIntervalResponse{
 			Deltas:      deltas,
 			TotalDeltas: len(deltas),
@@ -119,7 +117,7 @@ func (ds *deltaService) GetDeltasInRange(ctx context.Context, userId string, sta
 	}
 
 	// Fall back to repository - returns data types, needs conversion
-	ds.logger.DebugArgs(ctx, "Cache miss for deltas in range for user %s, falling back to repository", userId)
+	ds.monitor.Logger().DebugArgs(ctx, "Cache miss for deltas in range for user %s, falling back to repository", userId)
 	data, err := ds.repository.GetDeltasInRange(ctx, userId, startTime, endTime)
 	if err != nil {
 		return DeltaIntervalResponse{}, errors.Join(ErrDeltaGeneric, err)
@@ -132,7 +130,7 @@ func (ds *deltaService) GetDeltasInRange(ctx context.Context, userId string, sta
 }
 
 func (ds *deltaService) GetDeltaSummary(ctx context.Context, userId string, startTime, endTime time.Time) (api.GetDeltaSummaryResponse, error) {
-	ctx, span := otel.Tracer("hazelmere").Start(ctx, "deltaService.GetDeltaSummary")
+	ctx, span := ds.monitor.StartSpan(ctx, "deltaService.GetDeltaSummary")
 	defer span.End()
 
 	startTime, endTime, err := validateDeltaInterval(startTime, endTime)
@@ -143,10 +141,10 @@ func (ds *deltaService) GetDeltaSummary(ctx context.Context, userId string, star
 	// Check cache first, fall back to repository
 	var deltas []HiscoreDelta
 	if cachedDeltas, found := ds.cache.GetDeltasInRange(userId, startTime, endTime); found {
-		ds.logger.DebugArgs(ctx, "Cache hit for delta summary for user %s", userId)
+		ds.monitor.Logger().DebugArgs(ctx, "Cache hit for delta summary for user %s", userId)
 		deltas = cachedDeltas
 	} else {
-		ds.logger.DebugArgs(ctx, "Cache miss for delta summary for user %s, falling back to repository", userId)
+		ds.monitor.Logger().DebugArgs(ctx, "Cache miss for delta summary for user %s, falling back to repository", userId)
 		repoData, err := ds.repository.GetDeltasInRange(ctx, userId, startTime, endTime)
 		if err != nil {
 			return api.GetDeltaSummaryResponse{}, errors.Join(ErrDeltaGeneric, err)
@@ -229,7 +227,7 @@ func (ds *deltaService) GetDeltaSummary(ctx context.Context, userId string, star
 }
 
 func (ds *deltaService) PrimeCache(ctx context.Context) error {
-	ctx, span := otel.Tracer("hazelmere").Start(ctx, "deltaService.PrimeCache")
+	ctx, span := ds.monitor.StartSpan(ctx, "deltaService.PrimeCache")
 	defer span.End()
 
 	users, err := ds.userRepository.GetUsersWithTrackingEnabled(ctx)
@@ -237,7 +235,7 @@ func (ds *deltaService) PrimeCache(ctx context.Context) error {
 		return err
 	}
 
-	ds.logger.InfoArgs(ctx, "Priming delta cache for %d users with tracking enabled", len(users))
+	ds.monitor.Logger().InfoArgs(ctx, "Priming delta cache for %d users with tracking enabled", len(users))
 
 	var wg sync.WaitGroup
 	for _, u := range users {
@@ -249,24 +247,24 @@ func (ds *deltaService) PrimeCache(ctx context.Context) error {
 	}
 	wg.Wait()
 
-	ds.logger.InfoArgs(ctx, "Delta cache priming complete. Total users cached: %d", ds.cache.GetTotalCachedUsers())
+	ds.monitor.Logger().InfoArgs(ctx, "Delta cache priming complete. Total users cached: %d", ds.cache.GetTotalCachedUsers())
 	return nil
 }
 
 func (ds *deltaService) primeUserCache(ctx context.Context, userId string) {
 	deltas, err := ds.repository.GetAllDeltasForUser(ctx, userId)
 	if err != nil {
-		ds.logger.WarnArgs(ctx, "Failed to load deltas for user %s: %v", userId, err)
+		ds.monitor.Logger().WarnArgs(ctx, "Failed to load deltas for user %s: %v", userId, err)
 		return
 	}
 
 	if len(deltas) == 0 {
-		ds.logger.DebugArgs(ctx, "No deltas found for user %s, skipping cache prime", userId)
+		ds.monitor.Logger().DebugArgs(ctx, "No deltas found for user %s, skipping cache prime", userId)
 		return
 	}
 
 	ds.cache.SetUserDeltas(userId, deltas)
-	ds.logger.DebugArgs(ctx, "Primed cache for user %s with %d deltas", userId, len(deltas))
+	ds.monitor.Logger().DebugArgs(ctx, "Primed cache for user %s with %d deltas", userId, len(deltas))
 }
 
 func validateDeltaInterval(startTime, endTime time.Time) (time.Time, time.Time, error) {

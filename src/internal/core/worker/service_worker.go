@@ -5,11 +5,9 @@ import (
 	"errors"
 
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/snapshot"
-	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/monitor"
 	"github.com/ctfloyd/hazelmere-worker/src/pkg/worker_client"
-	"go.opentelemetry.io/otel"
 )
-
 
 var ErrWorkerGeneric = errors.New("an error occurred while performing the worker operation")
 var ErrHiscoreTimeout = errors.New("hiscore timeout")
@@ -19,21 +17,21 @@ type WorkerService interface {
 }
 
 type workerService struct {
-	logger          hz_logger.Logger
+	monitor         *monitor.Monitor
 	workerClient    *worker_client.HazelmereWorker
 	snapshotService snapshot.SnapshotService
 }
 
-func NewWorkerService(logger hz_logger.Logger, workerClient *worker_client.HazelmereWorker, snapshotService snapshot.SnapshotService) WorkerService {
+func NewWorkerService(mon *monitor.Monitor, workerClient *worker_client.HazelmereWorker, snapshotService snapshot.SnapshotService) WorkerService {
 	return &workerService{
-		logger:          logger,
+		monitor:         mon,
 		workerClient:    workerClient,
 		snapshotService: snapshotService,
 	}
 }
 
 func (ws *workerService) GenerateSnapshotOnDemand(ctx context.Context, userId string) (snapshot.HiscoreSnapshot, error) {
-	ctx, span := otel.Tracer("hazelmere").Start(ctx, "workerService.GenerateSnapshotOnDemand")
+	ctx, span := ws.monitor.StartSpan(ctx, "workerService.GenerateSnapshotOnDemand")
 	defer span.End()
 
 	response, err := ws.workerClient.Snapshot.GenerateSnapshotOnDemand(userId)

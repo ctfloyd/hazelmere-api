@@ -8,21 +8,21 @@ import (
 
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/delta"
 	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/middleware"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/monitor"
 	"github.com/ctfloyd/hazelmere-api/src/internal/rest/service_error"
 	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_handler"
-	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/go-chi/chi/v5"
 	chiWare "github.com/go-chi/chi/v5/middleware"
 )
 
 type DeltaHandler struct {
-	logger  hz_logger.Logger
+	monitor *monitor.Monitor
 	service delta.DeltaService
 }
 
-func NewDeltaHandler(logger hz_logger.Logger, service delta.DeltaService) *DeltaHandler {
-	return &DeltaHandler{logger, service}
+func NewDeltaHandler(mon *monitor.Monitor, service delta.DeltaService) *DeltaHandler {
+	return &DeltaHandler{mon, service}
 }
 
 func (dh *DeltaHandler) RegisterRoutes(mux *chi.Mux, version ApiVersion, authorizer *middleware.Authorizer) {
@@ -37,17 +37,20 @@ func (dh *DeltaHandler) RegisterRoutes(mux *chi.Mux, version ApiVersion, authori
 }
 
 func (dh *DeltaHandler) GetLatestDelta(w http.ResponseWriter, r *http.Request) {
-	userId := chi.URLParam(r, "userId")
-	dh.logger.InfoArgs(r.Context(), "Getting latest delta for user: %s", userId)
+	ctx, span := dh.monitor.StartSpan(r.Context(), "DeltaHandler.GetLatestDelta")
+	defer span.End()
 
-	d, err := dh.service.GetLatestDeltaForUser(r.Context(), userId)
+	userId := chi.URLParam(r, "userId")
+	dh.monitor.Logger().InfoArgs(ctx, "Getting latest delta for user: %s", userId)
+
+	d, err := dh.service.GetLatestDeltaForUser(ctx, userId)
 	if err != nil {
 		if errors.Is(err, delta.ErrDeltaNotFound) {
-			dh.logger.WarnArgs(r.Context(), "Delta not found for user %s", userId)
+			dh.monitor.Logger().WarnArgs(ctx, "Delta not found for user %s", userId)
 			hz_handler.Error(w, service_error.DeltaNotFound, "Delta not found.")
 			return
 		}
-		dh.logger.ErrorArgs(r.Context(), "An unexpected error occurred while getting latest delta for user %s: %+v", userId, err)
+		dh.monitor.Logger().ErrorArgs(ctx, "An unexpected error occurred while getting latest delta for user %s: %+v", userId, err)
 		hz_handler.Error(w, service_error.Internal, "An unexpected error occurred while getting latest delta.")
 		return
 	}
@@ -60,19 +63,22 @@ func (dh *DeltaHandler) GetLatestDelta(w http.ResponseWriter, r *http.Request) {
 }
 
 func (dh *DeltaHandler) GetDeltaInterval(w http.ResponseWriter, r *http.Request) {
+	ctx, span := dh.monitor.StartSpan(r.Context(), "DeltaHandler.GetDeltaInterval")
+	defer span.End()
+
 	var intervalRequest api.GetDeltaIntervalRequest
 	if ok := hz_handler.ReadBody(w, r, &intervalRequest); !ok {
 		return
 	}
 
-	dh.logger.InfoArgs(r.Context(), "Getting delta interval: %v", intervalRequest)
-	result, err := dh.service.GetDeltasInRange(r.Context(), intervalRequest.UserId, intervalRequest.StartTime, intervalRequest.EndTime)
+	dh.monitor.Logger().InfoArgs(ctx, "Getting delta interval: %v", intervalRequest)
+	result, err := dh.service.GetDeltasInRange(ctx, intervalRequest.UserId, intervalRequest.StartTime, intervalRequest.EndTime)
 	if err != nil {
 		if errors.Is(err, delta.ErrInvalidDeltaRequest) {
-			dh.logger.WarnArgs(r.Context(), "Invalid delta interval request: %+v", err)
+			dh.monitor.Logger().WarnArgs(ctx, "Invalid delta interval request: %+v", err)
 			hz_handler.Error(w, service_error.BadRequest, err.Error())
 		} else {
-			dh.logger.ErrorArgs(r.Context(), "An unexpected error occurred while getting delta interval: %+v", err)
+			dh.monitor.Logger().ErrorArgs(ctx, "An unexpected error occurred while getting delta interval: %+v", err)
 			hz_handler.Error(w, service_error.Internal, "An unexpected error occurred while getting delta interval.")
 		}
 		return
@@ -87,19 +93,22 @@ func (dh *DeltaHandler) GetDeltaInterval(w http.ResponseWriter, r *http.Request)
 }
 
 func (dh *DeltaHandler) GetDeltaSummary(w http.ResponseWriter, r *http.Request) {
+	ctx, span := dh.monitor.StartSpan(r.Context(), "DeltaHandler.GetDeltaSummary")
+	defer span.End()
+
 	var summaryRequest api.GetDeltaSummaryRequest
 	if ok := hz_handler.ReadBody(w, r, &summaryRequest); !ok {
 		return
 	}
 
-	dh.logger.InfoArgs(r.Context(), "Getting delta summary: %v", summaryRequest)
-	summary, err := dh.service.GetDeltaSummary(r.Context(), summaryRequest.UserId, summaryRequest.StartTime, summaryRequest.EndTime)
+	dh.monitor.Logger().InfoArgs(ctx, "Getting delta summary: %v", summaryRequest)
+	summary, err := dh.service.GetDeltaSummary(ctx, summaryRequest.UserId, summaryRequest.StartTime, summaryRequest.EndTime)
 	if err != nil {
 		if errors.Is(err, delta.ErrInvalidDeltaRequest) {
-			dh.logger.WarnArgs(r.Context(), "Invalid delta summary request: %+v", err)
+			dh.monitor.Logger().WarnArgs(ctx, "Invalid delta summary request: %+v", err)
 			hz_handler.Error(w, service_error.BadRequest, err.Error())
 		} else {
-			dh.logger.ErrorArgs(r.Context(), "An unexpected error occurred while getting delta summary: %+v", err)
+			dh.monitor.Logger().ErrorArgs(ctx, "An unexpected error occurred while getting delta summary: %+v", err)
 			hz_handler.Error(w, service_error.Internal, "An unexpected error occurred while getting delta summary.")
 		}
 		return

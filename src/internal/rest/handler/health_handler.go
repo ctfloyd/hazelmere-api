@@ -7,19 +7,19 @@ import (
 
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/health"
 	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/middleware"
-	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/monitor"
 	"github.com/go-chi/chi/v5"
 	chiWare "github.com/go-chi/chi/v5/middleware"
 )
 
 type HealthHandler struct {
-	logger        hz_logger.Logger
+	monitor       *monitor.Monitor
 	healthService *health.Service
 }
 
-func NewHealthHandler(logger hz_logger.Logger, healthService *health.Service) *HealthHandler {
+func NewHealthHandler(mon *monitor.Monitor, healthService *health.Service) *HealthHandler {
 	return &HealthHandler{
-		logger:        logger,
+		monitor:       mon,
 		healthService: healthService,
 	}
 }
@@ -34,7 +34,10 @@ func (hh *HealthHandler) RegisterRoutes(mux *chi.Mux, version ApiVersion, author
 }
 
 func (hh *HealthHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
-	response, isHealthy := hh.healthService.Check(r.Context())
+	ctx, span := hh.monitor.StartSpan(r.Context(), "HealthHandler.HealthCheck")
+	defer span.End()
+
+	response, isHealthy := hh.healthService.Check(ctx)
 
 	w.Header().Set("Content-Type", "application/json")
 	if isHealthy {
@@ -44,6 +47,6 @@ func (hh *HealthHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		hh.logger.ErrorArgs(r.Context(), "Failed to encode health response: %v", err)
+		hh.monitor.Logger().ErrorArgs(ctx, "Failed to encode health response: %v", err)
 	}
 }

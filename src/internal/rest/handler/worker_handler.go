@@ -8,21 +8,21 @@ import (
 
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/worker"
 	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/middleware"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/monitor"
 	"github.com/ctfloyd/hazelmere-api/src/internal/rest/service_error"
 	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_handler"
-	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/go-chi/chi/v5"
 	chiWare "github.com/go-chi/chi/v5/middleware"
 )
 
 type WorkerHandler struct {
-	logger  hz_logger.Logger
+	monitor *monitor.Monitor
 	service worker.WorkerService
 }
 
-func NewWorkerHandler(logger hz_logger.Logger, service worker.WorkerService) *WorkerHandler {
-	return &WorkerHandler{logger, service}
+func NewWorkerHandler(mon *monitor.Monitor, service worker.WorkerService) *WorkerHandler {
+	return &WorkerHandler{mon, service}
 }
 
 func (wh *WorkerHandler) RegisterRoutes(mux *chi.Mux, version ApiVersion, authorizer *middleware.Authorizer) {
@@ -36,19 +36,21 @@ func (wh *WorkerHandler) RegisterRoutes(mux *chi.Mux, version ApiVersion, author
 }
 
 func (wh *WorkerHandler) GenerateSnapshotOnDemand(w http.ResponseWriter, r *http.Request) {
-	userId := chi.URLParam(r, "userId")
-	ctx := r.Context()
+	ctx, span := wh.monitor.StartSpan(r.Context(), "WorkerHandler.GenerateSnapshotOnDemand")
+	defer span.End()
 
-	wh.logger.InfoArgs(ctx, "Generating snapshot on demand for user: %s", userId)
+	userId := chi.URLParam(r, "userId")
+
+	wh.monitor.Logger().InfoArgs(ctx, "Generating snapshot on demand for user: %s", userId)
 
 	ss, err := wh.service.GenerateSnapshotOnDemand(ctx, userId)
 	if err != nil {
 		if errors.Is(err, worker.ErrHiscoreTimeout) {
-			wh.logger.WarnArgs(ctx, "Hiscore timeout while generating snapshot for user: %s", userId)
+			wh.monitor.Logger().WarnArgs(ctx, "Hiscore timeout while generating snapshot for user: %s", userId)
 			hz_handler.Error(w, service_error.HiscoreTimeout, "Osrs hiscores timed out.")
 			return
 		}
-		wh.logger.ErrorArgs(ctx, "An unexpected error occurred while generating snapshot for user %s: %+v", userId, err)
+		wh.monitor.Logger().ErrorArgs(ctx, "An unexpected error occurred while generating snapshot for user %s: %+v", userId, err)
 		hz_handler.Error(w, service_error.Internal, "An unexpected error occurred while performing the worker operation.")
 		return
 	}

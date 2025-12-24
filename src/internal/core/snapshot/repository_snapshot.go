@@ -6,15 +6,13 @@ import (
 	"time"
 
 	"github.com/ctfloyd/hazelmere-api/src/internal/database"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/monitor"
 	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
-	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
-	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 )
-
 
 type SnapshotIntervalResult struct {
 	Snapshots          []HiscoreSnapshotData
@@ -35,19 +33,19 @@ type SnapshotRepository interface {
 }
 
 type mongoSnapshotRepository struct {
-	logger     hz_logger.Logger
+	monitor    *monitor.Monitor
 	collection *mongo.Collection
 }
 
-func NewSnapshotRepository(snapshotCollection *mongo.Collection, logger hz_logger.Logger) SnapshotRepository {
+func NewSnapshotRepository(snapshotCollection *mongo.Collection, mon *monitor.Monitor) SnapshotRepository {
 	return &mongoSnapshotRepository{
 		collection: snapshotCollection,
-		logger:     logger,
+		monitor:    mon,
 	}
 }
 
 func (sr *mongoSnapshotRepository) GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) (SnapshotIntervalResult, error) {
-	ctx, span := otel.Tracer("hazelmere").Start(ctx, "mongoSnapshotRepository.GetSnapshotInterval")
+	ctx, span := sr.monitor.StartSpan(ctx, "mongoSnapshotRepository.GetSnapshotInterval")
 	defer span.End()
 
 	dateFormat := getDateFormatForAggregationWindow(aggregationWindow)
@@ -201,7 +199,7 @@ func getDateFormatForAggregationWindow(window api.AggregationWindow) string {
 }
 
 func (sr *mongoSnapshotRepository) InsertSnapshot(ctx context.Context, snapshot HiscoreSnapshotData) (HiscoreSnapshotData, error) {
-	ctx, span := otel.Tracer("hazelmere").Start(ctx, "mongoSnapshotRepository.InsertSnapshot")
+	ctx, span := sr.monitor.StartSpan(ctx, "mongoSnapshotRepository.InsertSnapshot")
 	defer span.End()
 
 	_, err := sr.collection.InsertOne(ctx, snapshot)
@@ -212,7 +210,7 @@ func (sr *mongoSnapshotRepository) InsertSnapshot(ctx context.Context, snapshot 
 }
 
 func (sr *mongoSnapshotRepository) GetSnapshotById(ctx context.Context, id string) (HiscoreSnapshotData, error) {
-	ctx, span := otel.Tracer("hazelmere").Start(ctx, "mongoSnapshotRepository.GetSnapshotById")
+	ctx, span := sr.monitor.StartSpan(ctx, "mongoSnapshotRepository.GetSnapshotById")
 	defer span.End()
 
 	filter := bson.M{"_id": id}
@@ -234,7 +232,7 @@ func (sr *mongoSnapshotRepository) GetSnapshotById(ctx context.Context, id strin
 }
 
 func (sr *mongoSnapshotRepository) GetLatestSnapshotForUser(ctx context.Context, userId string) (HiscoreSnapshotData, error) {
-	ctx, span := otel.Tracer("hazelmere").Start(ctx, "mongoSnapshotRepository.GetLatestSnapshotForUser")
+	ctx, span := sr.monitor.StartSpan(ctx, "mongoSnapshotRepository.GetLatestSnapshotForUser")
 	defer span.End()
 
 	sort := options.FindOne().SetSort(bson.D{{Key: "timestamp", Value: -1}})
@@ -258,7 +256,7 @@ func (sr *mongoSnapshotRepository) GetLatestSnapshotForUser(ctx context.Context,
 }
 
 func (sr *mongoSnapshotRepository) GetAllSnapshotsForUser(ctx context.Context, userId string) ([]HiscoreSnapshotData, error) {
-	ctx, span := otel.Tracer("hazelmere").Start(ctx, "mongoSnapshotRepository.GetAllSnapshotsForUser")
+	ctx, span := sr.monitor.StartSpan(ctx, "mongoSnapshotRepository.GetAllSnapshotsForUser")
 	defer span.End()
 
 	filter := bson.M{"userId": userId}
@@ -277,7 +275,7 @@ func (sr *mongoSnapshotRepository) GetAllSnapshotsForUser(ctx context.Context, u
 }
 
 func (sr *mongoSnapshotRepository) GetAllTimestampsForUser(ctx context.Context, userId string) ([]HiscoreTimestampData, error) {
-	ctx, span := otel.Tracer("hazelmere").Start(ctx, "mongoSnapshotRepository.GetAllTimestampsForUser")
+	ctx, span := sr.monitor.StartSpan(ctx, "mongoSnapshotRepository.GetAllTimestampsForUser")
 	defer span.End()
 
 	filter := bson.M{"userId": userId}
@@ -297,7 +295,7 @@ func (sr *mongoSnapshotRepository) GetAllTimestampsForUser(ctx context.Context, 
 }
 
 func (sr *mongoSnapshotRepository) GetSnapshotForUserNearestTimestamp(ctx context.Context, userId string, timestamp time.Time) (HiscoreSnapshotData, error) {
-	ctx, span := otel.Tracer("hazelmere").Start(ctx, "mongoSnapshotRepository.GetSnapshotForUserNearestTimestamp")
+	ctx, span := sr.monitor.StartSpan(ctx, "mongoSnapshotRepository.GetSnapshotForUserNearestTimestamp")
 	defer span.End()
 
 	group, ctx := errgroup.WithContext(ctx)
@@ -387,7 +385,7 @@ func (sr *mongoSnapshotRepository) getSnapshotForUserNearestTimestampGreaterThan
 }
 
 func (sr *mongoSnapshotRepository) GetSnapshotsInRange(ctx context.Context, userId string, startTime time.Time, endTime time.Time) ([]HiscoreSnapshotData, error) {
-	ctx, span := otel.Tracer("hazelmere").Start(ctx, "mongoSnapshotRepository.GetSnapshotsInRange")
+	ctx, span := sr.monitor.StartSpan(ctx, "mongoSnapshotRepository.GetSnapshotsInRange")
 	defer span.End()
 
 	filter := bson.M{
@@ -413,7 +411,7 @@ func (sr *mongoSnapshotRepository) GetSnapshotsInRange(ctx context.Context, user
 }
 
 func (sr *mongoSnapshotRepository) GetOldestSnapshotForUser(ctx context.Context, userId string) (HiscoreSnapshotData, error) {
-	ctx, span := otel.Tracer("hazelmere").Start(ctx, "mongoSnapshotRepository.GetOldestSnapshotForUser")
+	ctx, span := sr.monitor.StartSpan(ctx, "mongoSnapshotRepository.GetOldestSnapshotForUser")
 	defer span.End()
 
 	sort := options.FindOne().SetSort(bson.D{{Key: "timestamp", Value: 1}})

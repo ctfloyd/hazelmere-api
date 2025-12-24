@@ -120,26 +120,26 @@ func initializeApp(ctx context.Context, logger hz_logger.Logger, config *hz_conf
 	userRepo := user.NewUserRepository(userCollection, mon)
 	userValidator := user.NewUserValidator()
 	userService := user.NewUserService(mon, userRepo, userValidator)
-	userHandler := handler.NewUserHandler(logger, userService)
+	userHandler := handler.NewUserHandler(mon, userService)
 
 	// Initialize delta components with cache
 	deltaCollection := f.NewDeltaCollection()
-	deltaRepo := delta.NewDeltaRepository(deltaCollection, logger)
+	deltaRepo := delta.NewDeltaRepository(deltaCollection, mon)
 	deltaCache := delta.NewDeltaCache()
-	deltaService := delta.NewDeltaService(logger, deltaRepo, deltaCache, userRepo)
-	deltaHandler := handler.NewDeltaHandler(logger, deltaService)
+	deltaService := delta.NewDeltaService(mon, deltaRepo, deltaCache, userRepo)
+	deltaHandler := handler.NewDeltaHandler(mon, deltaService)
 
 	// Initialize snapshot components
 	snapshotCollection := f.NewSnapshotCollection()
-	snapshotRepo := snapshot.NewSnapshotRepository(snapshotCollection, logger)
+	snapshotRepo := snapshot.NewSnapshotRepository(snapshotCollection, mon)
 	snapshotValidator := snapshot.NewSnapshotValidator()
-	snapshotService := snapshot.NewSnapshotService(logger, snapshotRepo, snapshotValidator, userRepo)
+	snapshotService := snapshot.NewSnapshotService(mon, snapshotRepo, snapshotValidator, userRepo)
 
 	// Initialize orchestrator (coordinates snapshot and delta creation in transactions)
 	txManager := database.NewTransactionManager(client, false)
-	orchestrator := hiscore.NewHiscoreOrchestrator(logger, snapshotService, deltaService, txManager)
+	orchestrator := hiscore.NewHiscoreOrchestrator(mon, snapshotService, deltaService, txManager)
 
-	snapshotHandler := handler.NewSnapshotHandler(logger, snapshotService, orchestrator)
+	snapshotHandler := handler.NewSnapshotHandler(mon, snapshotService, orchestrator)
 
 	// Prime delta cache
 	logger.Info(ctx, "Priming delta cache...")
@@ -148,17 +148,17 @@ func initializeApp(ctx context.Context, logger hz_logger.Logger, config *hz_conf
 	}
 
 	workerClient := initialize.InitWorkerClient(logger, config)
-	workerService := worker.NewWorkerService(logger, workerClient, snapshotService)
-	workerHandler := handler.NewWorkerHandler(logger, workerService)
+	workerService := worker.NewWorkerService(mon, workerClient, snapshotService)
+	workerHandler := handler.NewWorkerHandler(mon, workerService)
 
 	// Initialize health service with MongoDB client for deep health checks
 	healthService := health.NewService(client, dbName, environment)
-	healthHandler := handler.NewHealthHandler(logger, healthService)
+	healthHandler := handler.NewHealthHandler(mon, healthService)
 
 	authorizer := middleware.NewAuthorizer(
 		config.BoolValueOrPanic("auth.enabled"),
 		config.StringSliceValueOrPanic("auth.tokens"),
-		logger,
+		mon,
 	)
 
 	logger.Info(ctx, "Registering routes")

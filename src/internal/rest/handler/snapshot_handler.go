@@ -11,22 +11,22 @@ import (
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/hiscore"
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/snapshot"
 	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/middleware"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/monitor"
 	"github.com/ctfloyd/hazelmere-api/src/internal/rest/service_error"
 	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_handler"
-	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/go-chi/chi/v5"
 	chiWare "github.com/go-chi/chi/v5/middleware"
 )
 
 type SnapshotHandler struct {
-	logger       hz_logger.Logger
+	monitor      *monitor.Monitor
 	service      snapshot.SnapshotService
 	orchestrator hiscore.HiscoreOrchestrator
 }
 
-func NewSnapshotHandler(logger hz_logger.Logger, service snapshot.SnapshotService, orchestrator hiscore.HiscoreOrchestrator) *SnapshotHandler {
-	return &SnapshotHandler{logger, service, orchestrator}
+func NewSnapshotHandler(mon *monitor.Monitor, service snapshot.SnapshotService, orchestrator hiscore.HiscoreOrchestrator) *SnapshotHandler {
+	return &SnapshotHandler{mon, service, orchestrator}
 }
 
 func (sh *SnapshotHandler) RegisterRoutes(mux *chi.Mux, version ApiVersion, authorizer *middleware.Authorizer) {
@@ -46,19 +46,22 @@ func (sh *SnapshotHandler) RegisterRoutes(mux *chi.Mux, version ApiVersion, auth
 }
 
 func (sh *SnapshotHandler) GetSnapshotInterval(w http.ResponseWriter, r *http.Request) {
+	ctx, span := sh.monitor.StartSpan(r.Context(), "SnapshotHandler.GetSnapshotInterval")
+	defer span.End()
+
 	var intervalRequest api.GetSnapshotIntervalRequest
 	if ok := hz_handler.ReadBody(w, r, &intervalRequest); !ok {
 		return
 	}
 
-	sh.logger.InfoArgs(r.Context(), "Getting snapshot interval: %v", intervalRequest)
-	result, err := sh.service.GetSnapshotInterval(r.Context(), intervalRequest.UserId, intervalRequest.StartTime, intervalRequest.EndTime, intervalRequest.AggregationWindow)
+	sh.monitor.Logger().InfoArgs(ctx, "Getting snapshot interval: %v", intervalRequest)
+	result, err := sh.service.GetSnapshotInterval(ctx, intervalRequest.UserId, intervalRequest.StartTime, intervalRequest.EndTime, intervalRequest.AggregationWindow)
 	if err != nil {
 		if errors.Is(err, snapshot.ErrInvalidIntervalRequest) || errors.Is(err, snapshot.ErrInvalidAggregationWindow) {
-			sh.logger.WarnArgs(r.Context(), "Invalid snapshot interval request: %+v", err)
+			sh.monitor.Logger().WarnArgs(ctx, "Invalid snapshot interval request: %+v", err)
 			hz_handler.Error(w, service_error.BadRequest, err.Error())
 		} else {
-			sh.logger.ErrorArgs(r.Context(), "An unexpected error occurred while getting snapshot interval: %+v", err)
+			sh.monitor.Logger().ErrorArgs(ctx, "An unexpected error occurred while getting snapshot interval: %+v", err)
 			hz_handler.Error(w, service_error.Internal, "An unexpected error occurred while getting snapshot interval.")
 		}
 		return
@@ -74,12 +77,15 @@ func (sh *SnapshotHandler) GetSnapshotInterval(w http.ResponseWriter, r *http.Re
 }
 
 func (sh *SnapshotHandler) GetAllSnapshotsForUser(w http.ResponseWriter, r *http.Request) {
-	userId := chi.URLParam(r, "userId")
-	sh.logger.InfoArgs(r.Context(), "Getting all snapshots for user: %s", userId)
+	ctx, span := sh.monitor.StartSpan(r.Context(), "SnapshotHandler.GetAllSnapshotsForUser")
+	defer span.End()
 
-	snapshots, err := sh.service.GetAllSnapshotsForUser(r.Context(), userId)
+	userId := chi.URLParam(r, "userId")
+	sh.monitor.Logger().InfoArgs(ctx, "Getting all snapshots for user: %s", userId)
+
+	snapshots, err := sh.service.GetAllSnapshotsForUser(ctx, userId)
 	if err != nil {
-		sh.logger.ErrorArgs(r.Context(), "An unexpected error occurred while getting all snapshots for user %s: %+v", userId, err)
+		sh.monitor.Logger().ErrorArgs(ctx, "An unexpected error occurred while getting all snapshots for user %s: %+v", userId, err)
 		hz_handler.Error(w, service_error.Internal, "An unexpected error occurred while getting all snapshots for user.")
 		return
 	}
@@ -92,26 +98,29 @@ func (sh *SnapshotHandler) GetAllSnapshotsForUser(w http.ResponseWriter, r *http
 }
 
 func (sh *SnapshotHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
+	ctx, span := sh.monitor.StartSpan(r.Context(), "SnapshotHandler.CreateSnapshot")
+	defer span.End()
+
 	var createSnapshotRequest api.CreateSnapshotRequest
 	if ok := hz_handler.ReadBody(w, r, &createSnapshotRequest); !ok {
-		sh.logger.Warn(r.Context(), "Failed to read request body for create snapshot")
+		sh.monitor.Logger().Warn(ctx, "Failed to read request body for create snapshot")
 		return
 	}
 
-	sh.logger.InfoArgs(r.Context(), "Creating snapshot for user: %s", createSnapshotRequest.Snapshot.UserId)
+	sh.monitor.Logger().InfoArgs(ctx, "Creating snapshot for user: %s", createSnapshotRequest.Snapshot.UserId)
 
 	// Convert API type to domain type
 	domainSnapshot := snapshot.HiscoreSnapshot{}.FromAPI(createSnapshotRequest.Snapshot)
 
-	result, err := sh.orchestrator.CreateSnapshotWithDelta(r.Context(), domainSnapshot)
+	result, err := sh.orchestrator.CreateSnapshotWithDelta(ctx, domainSnapshot)
 	if err != nil {
 		if errors.Is(err, snapshot.ErrSnapshotValidation) || errors.Is(err, hiscore.ErrSnapshotValidation) {
-			sh.logger.WarnArgs(r.Context(), "Invalid snapshot request: %+v", err)
+			sh.monitor.Logger().WarnArgs(ctx, "Invalid snapshot request: %+v", err)
 			hz_handler.Error(w, service_error.InvalidSnapshot, err.Error())
 			return
 		}
 
-		sh.logger.ErrorArgs(r.Context(), "An unexpected error occurred while creating snapshot: %+v", err)
+		sh.monitor.Logger().ErrorArgs(ctx, "An unexpected error occurred while creating snapshot: %+v", err)
 		hz_handler.Error(w, service_error.Internal, "An unexpected error occurred while creating snapshot.")
 		return
 	}
@@ -124,26 +133,29 @@ func (sh *SnapshotHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 }
 
 func (sh *SnapshotHandler) GetSnapshotForUserNearestTimestamp(w http.ResponseWriter, r *http.Request) {
+	ctx, span := sh.monitor.StartSpan(r.Context(), "SnapshotHandler.GetSnapshotForUserNearestTimestamp")
+	defer span.End()
+
 	userId := chi.URLParam(r, "userId")
 
 	timestampString := chi.URLParam(r, "timestamp")
 	millis, err := strconv.ParseInt(timestampString, 10, 64)
 	if err != nil {
-		sh.logger.WarnArgs(r.Context(), "Invalid timestamp format for user %s: %s", userId, timestampString)
+		sh.monitor.Logger().WarnArgs(ctx, "Invalid timestamp format for user %s: %s", userId, timestampString)
 		hz_handler.Error(w, service_error.BadRequest, "Could not convert timestamp to a number.")
 		return
 	}
 
-	sh.logger.InfoArgs(r.Context(), "Getting snapshots for user: %s closest to %d", userId, millis)
+	sh.monitor.Logger().InfoArgs(ctx, "Getting snapshots for user: %s closest to %d", userId, millis)
 
-	snap, err := sh.service.GetSnapshotForUserNearestTimestamp(r.Context(), userId, millis)
+	snap, err := sh.service.GetSnapshotForUserNearestTimestamp(ctx, userId, millis)
 	if err != nil {
 		if errors.Is(err, snapshot.ErrSnapshotNotFound) {
-			sh.logger.WarnArgs(r.Context(), "Snapshot not found for user %s nearest timestamp %d", userId, millis)
+			sh.monitor.Logger().WarnArgs(ctx, "Snapshot not found for user %s nearest timestamp %d", userId, millis)
 			hz_handler.Error(w, service_error.SnapshotNotFound, "Snapshot not found.")
 			return
 		}
-		sh.logger.ErrorArgs(r.Context(), "An unexpected error occurred while getting snapshot for user %s nearest timestamp: %+v", userId, err)
+		sh.monitor.Logger().ErrorArgs(ctx, "An unexpected error occurred while getting snapshot for user %s nearest timestamp: %+v", userId, err)
 		hz_handler.Error(w, service_error.Internal, "An unexpected service_error occurred while getting snapshots for user nearest timestamp.")
 		return
 	}
@@ -156,21 +168,24 @@ func (sh *SnapshotHandler) GetSnapshotForUserNearestTimestamp(w http.ResponseWri
 }
 
 func (sh *SnapshotHandler) GetSnapshotWithDeltas(w http.ResponseWriter, r *http.Request) {
+	ctx, span := sh.monitor.StartSpan(r.Context(), "SnapshotHandler.GetSnapshotWithDeltas")
+	defer span.End()
+
 	var request api.GetSnapshotWithDeltasRequest
 	if ok := hz_handler.ReadBody(w, r, &request); !ok {
 		return
 	}
 
-	sh.logger.InfoArgs(r.Context(), "Getting snapshot with deltas for user: %s from %v to %v", request.UserId, request.StartTime, request.EndTime)
+	sh.monitor.Logger().InfoArgs(ctx, "Getting snapshot with deltas for user: %s from %v to %v", request.UserId, request.StartTime, request.EndTime)
 
-	result, err := sh.orchestrator.GetDeltaSummary(r.Context(), request.UserId, request.StartTime, request.EndTime)
+	result, err := sh.orchestrator.GetDeltaSummary(ctx, request.UserId, request.StartTime, request.EndTime)
 	if err != nil {
 		if errors.Is(err, hiscore.ErrSnapshotNotFound) {
-			sh.logger.WarnArgs(r.Context(), "Snapshot not found for delta summary request: %+v", err)
+			sh.monitor.Logger().WarnArgs(ctx, "Snapshot not found for delta summary request: %+v", err)
 			hz_handler.Error(w, service_error.SnapshotNotFound, "No snapshot found near the start time.")
 			return
 		}
-		sh.logger.ErrorArgs(r.Context(), "An unexpected error occurred while getting snapshot with deltas: %+v", err)
+		sh.monitor.Logger().ErrorArgs(ctx, "An unexpected error occurred while getting snapshot with deltas: %+v", err)
 		hz_handler.Error(w, service_error.Internal, "An unexpected error occurred while getting snapshot with deltas.")
 		return
 	}
@@ -180,7 +195,7 @@ func (sh *SnapshotHandler) GetSnapshotWithDeltas(w http.ResponseWriter, r *http.
 	if accept == hiscore.BinaryContentType {
 		data, err := hiscore.EncodeDeltaSummaryBinary(result)
 		if err != nil {
-			sh.logger.ErrorArgs(r.Context(), "Failed to encode binary response: %+v", err)
+			sh.monitor.Logger().ErrorArgs(ctx, "Failed to encode binary response: %+v", err)
 			hz_handler.Error(w, service_error.Internal, "Failed to encode response.")
 			return
 		}
