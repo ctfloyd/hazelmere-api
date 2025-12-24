@@ -28,7 +28,7 @@ func Run(configPath string, args []string) error {
 	defer stop()
 
 	// Use environment-based config if no explicit config path provided
-	effectiveConfigPath := resolveConfigPath(configPath)
+	effectiveConfigPath, environment := resolveConfigPath(configPath)
 
 	config := hz_config.NewConfigFromPath(effectiveConfigPath)
 	if err := config.Read(); err != nil {
@@ -36,7 +36,7 @@ func Run(configPath string, args []string) error {
 	}
 
 	logger := hz_logger.NewZeroLogAdapater(hz_logger.LogLevelFromString(config.ValueOrPanic("log.level")))
-	logger.Info(ctx, "Starting Hazelmere API server")
+	logger.InfoArgs(ctx, "Starting Hazelmere API server (environment: %s)", environment)
 
 	router := initialize.InitRouter(logger)
 
@@ -51,7 +51,7 @@ func Run(configPath string, args []string) error {
 	}
 	defer initialize.MongoCleanup(ctx, client)
 
-	if err := initializeApp(ctx, logger, config, router, client); err != nil {
+	if err := initializeApp(ctx, logger, config, router, client, environment); err != nil {
 		return err
 	}
 
@@ -63,24 +63,29 @@ func Run(configPath string, args []string) error {
 	return nil
 }
 
-// resolveConfigPath determines the config file path based on environment
-func resolveConfigPath(explicitPath string) string {
-	// If an explicit path was provided via -c flag, use it
-	if explicitPath != "config/dev.json" {
-		return explicitPath
-	}
-
+// resolveConfigPath determines the config file path and environment name
+func resolveConfigPath(explicitPath string) (configPath string, environment string) {
 	// Check ENVIRONMENT env var
 	env := os.Getenv("ENVIRONMENT")
+
+	// If an explicit path was provided via -c flag, use it
+	if explicitPath != "config/dev.json" {
+		// Try to infer environment from path
+		if env != "" {
+			return explicitPath, env
+		}
+		return explicitPath, "custom"
+	}
+
 	switch env {
 	case "prod", "production":
-		return "config/prod.json"
+		return "config/prod.json", "production"
 	default:
-		return "config/dev.json"
+		return "config/dev.json", "development"
 	}
 }
 
-func initializeApp(ctx context.Context, logger hz_logger.Logger, config *hz_config.Config, router *chi.Mux, client *mongo.Client) error {
+func initializeApp(ctx context.Context, logger hz_logger.Logger, config *hz_config.Config, router *chi.Mux, client *mongo.Client, environment string) error {
 	dbName := config.ValueOrPanic("mongo.database.name")
 
 	f := database.NewMongoFactory(client, database.MongoFactoryConfig{
@@ -126,7 +131,7 @@ func initializeApp(ctx context.Context, logger hz_logger.Logger, config *hz_conf
 	workerHandler := handler.NewWorkerHandler(logger, workerService)
 
 	// Initialize health service with MongoDB client for deep health checks
-	healthService := health.NewService(client, dbName)
+	healthService := health.NewService(client, dbName, environment)
 	healthHandler := handler.NewHealthHandler(logger, healthService)
 
 	authorizer := middleware.NewAuthorizer(

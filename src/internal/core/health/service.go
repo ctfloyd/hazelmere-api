@@ -20,6 +20,7 @@ type DependencyStatus struct {
 // HealthResponse is the complete health check response
 type HealthResponse struct {
 	Status       string             `json:"status"` // "healthy", "unhealthy", "degraded"
+	Environment  string             `json:"environment"`
 	Commit       string             `json:"commit"`
 	BuildTime    string             `json:"buildTime"`
 	Version      string             `json:"version"`
@@ -31,13 +32,15 @@ type HealthResponse struct {
 type Service struct {
 	mongoClient *mongo.Client
 	dbName      string
+	environment string
 }
 
 // NewService creates a new health service
-func NewService(mongoClient *mongo.Client, dbName string) *Service {
+func NewService(mongoClient *mongo.Client, dbName string, environment string) *Service {
 	return &Service{
 		mongoClient: mongoClient,
 		dbName:      dbName,
+		environment: environment,
 	}
 }
 
@@ -48,6 +51,7 @@ func (s *Service) Check(ctx context.Context) (HealthResponse, bool) {
 
 	response := HealthResponse{
 		Status:       "healthy",
+		Environment:  s.environment,
 		Commit:       info.Commit,
 		BuildTime:    info.BuildTime,
 		Version:      info.Version,
