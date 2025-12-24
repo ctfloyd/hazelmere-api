@@ -69,7 +69,7 @@ func (app *Application) Init(logger hz_logger.Logger, config *hz_config.Config) 
 	snapshotService := snapshot.NewSnapshotService(logger, snapshotRepo, snapshotValidator, userRepo)
 
 	// Initialize orchestrator (coordinates snapshot and delta creation in transactions)
-	txManager := database.NewTransactionManager(c)
+	txManager := database.NewTransactionManager(c, false)
 	orchestrator := hiscore.NewHiscoreOrchestrator(logger, snapshotService, deltaService, txManager)
 
 	snapshotHandler := handler.NewSnapshotHandler(logger, snapshotService, orchestrator)

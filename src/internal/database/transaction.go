@@ -10,18 +10,24 @@ type txContextKey struct{}
 
 // TransactionManager handles MongoDB transactions
 type TransactionManager struct {
-	client *mongo.Client
+	client              *mongo.Client
+	transactionsEnabled bool
 }
 
-func NewTransactionManager(client *mongo.Client) *TransactionManager {
-	return &TransactionManager{client: client}
+func NewTransactionManager(client *mongo.Client, transactionsEnabled bool) *TransactionManager {
+	return &TransactionManager{client: client, transactionsEnabled: transactionsEnabled}
 }
 
 // WithTransaction executes the given function within a transaction.
+// If transactions are disabled, it simply executes the function directly.
 // If a transaction is already in progress (detected via context), it reuses that transaction.
 // Otherwise, it starts a new transaction.
 // On error, the transaction is rolled back. On success, it is committed.
 func (tm *TransactionManager) WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
+	if !tm.transactionsEnabled {
+		return fn(ctx)
+	}
+
 	// Check if there's already a transaction in progress
 	if tm.IsInTransaction(ctx) {
 		// Reuse existing transaction - just run the function
