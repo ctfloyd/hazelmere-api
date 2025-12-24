@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"github.com/ctfloyd/hazelmere-api/src/internal/rest/middleware"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/middleware"
 	"github.com/go-chi/chi/v5"
 )
 

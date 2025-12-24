@@ -29,5 +29,12 @@
   "auth": {
     "enabled": true,
     "tokens": ["{{API_TOKEN}}"]
+  },
+  "otel": {
+    "enabled": true,
+    "serviceName": "hazelmere",
+    "serviceNamespace": "hazelmere",
+    "endpoint": "https://otlp-gateway-prod-us-east-2.grafana.net/otlp",
+    "authHeader": "{{OTEL_AUTH}}"
   }
 }

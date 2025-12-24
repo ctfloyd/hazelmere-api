@@ -3,8 +3,9 @@ package user
 import (
 	"context"
 	"errors"
+
 	"github.com/ctfloyd/hazelmere-api/src/internal/database"
-	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/monitor"
 	"github.com/google/uuid"
 )
 
@@ -21,20 +22,23 @@ type UserService interface {
 }
 
 type userService struct {
-	logger     hz_logger.Logger
+	monitor    *monitor.Monitor
 	validator  UserValidator
 	repository UserRepository
 }
 
-func NewUserService(logger hz_logger.Logger, repository UserRepository, validator UserValidator) UserService {
+func NewUserService(mon *monitor.Monitor, repository UserRepository, validator UserValidator) UserService {
 	return &userService{
-		logger:     logger,
+		monitor:    mon,
 		validator:  validator,
 		repository: repository,
 	}
 }
 
 func (us *userService) GetUserById(ctx context.Context, id string) (User, error) {
+	ctx, span := us.monitor.StartSpan(ctx, "userService.GetUserById")
+	defer span.End()
+
 	data, err := us.repository.GetUserById(ctx, id)
 	if err != nil {
 		if errors.Is(err, database.ErrNotFound) {
@@ -47,6 +51,9 @@ func (us *userService) GetUserById(ctx context.Context, id string) (User, error)
 }
 
 func (us *userService) GetAllUsers(ctx context.Context) ([]User, error) {
+	ctx, span := us.monitor.StartSpan(ctx, "userService.GetAllUsers")
+	defer span.End()
+
 	data, err := us.repository.GetAllUsers(ctx)
 	if err != nil {
 		return []User{}, errors.Join(ErrUserGeneric, err)
@@ -55,6 +62,9 @@ func (us *userService) GetAllUsers(ctx context.Context) ([]User, error) {
 }
 
 func (us *userService) CreateUser(ctx context.Context, user User) (User, error) {
+	ctx, span := us.monitor.StartSpan(ctx, "userService.CreateUser")
+	defer span.End()
+
 	user.Id = uuid.New().String()
 
 	err := us.validator.ValidateUser(user)
@@ -80,6 +90,9 @@ func (us *userService) CreateUser(ctx context.Context, user User) (User, error) 
 }
 
 func (us *userService) UpdateUser(ctx context.Context, user User) (User, error) {
+	ctx, span := us.monitor.StartSpan(ctx, "userService.UpdateUser")
+	defer span.End()
+
 	_, err := us.GetUserById(ctx, user.Id)
 	if err != nil {
 		if errors.Is(err, database.ErrNotFound) {
@@ -99,7 +112,6 @@ func (us *userService) UpdateUser(ctx context.Context, user User) (User, error) 
 			return User{}, errors.Join(ErrUserGeneric, err)
 		}
 	} else if existingUser.Id != user.Id {
-		// Successful operation, the RSN that's being updated to is already tracked.
 		return User{}, ErrRunescapeNameTracked
 	}
 

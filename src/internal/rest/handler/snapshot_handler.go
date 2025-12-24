@@ -10,7 +10,7 @@ import (
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/delta"
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/hiscore"
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/snapshot"
-	"github.com/ctfloyd/hazelmere-api/src/internal/rest/middleware"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/middleware"
 	"github.com/ctfloyd/hazelmere-api/src/internal/rest/service_error"
 	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_handler"

@@ -10,7 +10,9 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.opentelemetry.io/otel"
 )
+
 
 type DeltaRepository interface {
 	InsertDelta(ctx context.Context, delta HiscoreDeltaData) (HiscoreDeltaData, error)
@@ -34,6 +36,9 @@ func NewDeltaRepository(deltaCollection *mongo.Collection, logger hz_logger.Logg
 }
 
 func (dr *mongoDeltaRepository) InsertDelta(ctx context.Context, delta HiscoreDeltaData) (HiscoreDeltaData, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "mongoDeltaRepository.InsertDelta")
+	defer span.End()
+
 	_, err := dr.collection.InsertOne(ctx, delta)
 	if err != nil {
 		return HiscoreDeltaData{}, errors.Join(database.ErrGeneric, err)
@@ -42,6 +47,9 @@ func (dr *mongoDeltaRepository) InsertDelta(ctx context.Context, delta HiscoreDe
 }
 
 func (dr *mongoDeltaRepository) GetDeltaById(ctx context.Context, id string) (HiscoreDeltaData, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "mongoDeltaRepository.GetDeltaById")
+	defer span.End()
+
 	filter := bson.M{"_id": id}
 	result := dr.collection.FindOne(ctx, filter)
 	if result.Err() != nil {
@@ -60,6 +68,9 @@ func (dr *mongoDeltaRepository) GetDeltaById(ctx context.Context, id string) (Hi
 }
 
 func (dr *mongoDeltaRepository) GetLatestDeltaForUser(ctx context.Context, userId string) (HiscoreDeltaData, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "mongoDeltaRepository.GetLatestDeltaForUser")
+	defer span.End()
+
 	sort := options.FindOne().SetSort(bson.D{{Key: "timestamp", Value: -1}})
 	filter := bson.M{"userId": userId}
 
@@ -80,6 +91,9 @@ func (dr *mongoDeltaRepository) GetLatestDeltaForUser(ctx context.Context, userI
 }
 
 func (dr *mongoDeltaRepository) GetDeltasInRange(ctx context.Context, userId string, startTime, endTime time.Time) ([]HiscoreDeltaData, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "mongoDeltaRepository.GetDeltasInRange")
+	defer span.End()
+
 	filter := bson.M{
 		"userId": userId,
 		"timestamp": bson.M{
@@ -103,6 +117,9 @@ func (dr *mongoDeltaRepository) GetDeltasInRange(ctx context.Context, userId str
 }
 
 func (dr *mongoDeltaRepository) GetAllDeltasForUser(ctx context.Context, userId string) ([]HiscoreDeltaData, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "mongoDeltaRepository.GetAllDeltasForUser")
+	defer span.End()
+
 	filter := bson.M{"userId": userId}
 	opts := options.Find().SetSort(bson.D{{Key: "timestamp", Value: 1}})
 
@@ -120,6 +137,9 @@ func (dr *mongoDeltaRepository) GetAllDeltasForUser(ctx context.Context, userId 
 }
 
 func (dr *mongoDeltaRepository) CountDeltasForUser(ctx context.Context, userId string) (int64, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "mongoDeltaRepository.CountDeltasForUser")
+	defer span.End()
+
 	filter := bson.M{"userId": userId}
 	count, err := dr.collection.CountDocuments(ctx, filter)
 	if err != nil {

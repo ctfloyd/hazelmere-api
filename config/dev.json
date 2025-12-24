@@ -29,5 +29,8 @@
   "auth": {
     "enabled": false,
     "tokens": ["TestToken"]
+  },
+  "otel": {
+    "enabled": false
   }
 }

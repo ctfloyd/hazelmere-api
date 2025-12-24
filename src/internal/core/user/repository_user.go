@@ -3,8 +3,9 @@ package user
 import (
 	"context"
 	"errors"
+
 	"github.com/ctfloyd/hazelmere-api/src/internal/database"
-	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/monitor"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
@@ -19,18 +20,21 @@ type UserRepository interface {
 }
 
 type mongoUserRepository struct {
-	logger     hz_logger.Logger
+	monitor    *monitor.Monitor
 	collection *mongo.Collection
 }
 
-func NewUserRepository(userCollection *mongo.Collection, logger hz_logger.Logger) UserRepository {
+func NewUserRepository(userCollection *mongo.Collection, mon *monitor.Monitor) UserRepository {
 	return &mongoUserRepository{
 		collection: userCollection,
-		logger:     logger,
+		monitor:    mon,
 	}
 }
 
 func (ur *mongoUserRepository) GetUserById(ctx context.Context, id string) (UserData, error) {
+	ctx, span := ur.monitor.StartSpan(ctx, "mongoUserRepository.GetUserById")
+	defer span.End()
+
 	filter := bson.M{"_id": id}
 
 	result := ur.collection.FindOne(ctx, filter)
@@ -52,6 +56,9 @@ func (ur *mongoUserRepository) GetUserById(ctx context.Context, id string) (User
 }
 
 func (ur *mongoUserRepository) GetUserByRunescapeName(ctx context.Context, runescapeName string) (UserData, error) {
+	ctx, span := ur.monitor.StartSpan(ctx, "mongoUserRepository.GetUserByRunescapeName")
+	defer span.End()
+
 	filter := bson.M{"runescapeName": runescapeName}
 
 	result := ur.collection.FindOne(ctx, filter)
@@ -73,6 +80,9 @@ func (ur *mongoUserRepository) GetUserByRunescapeName(ctx context.Context, runes
 }
 
 func (ur *mongoUserRepository) GetAllUsers(ctx context.Context) ([]UserData, error) {
+	ctx, span := ur.monitor.StartSpan(ctx, "mongoUserRepository.GetAllUsers")
+	defer span.End()
+
 	cursor, err := ur.collection.Find(ctx, bson.D{})
 	if err != nil {
 		return []UserData{}, errors.Join(database.ErrGeneric, err)
@@ -87,6 +97,9 @@ func (ur *mongoUserRepository) GetAllUsers(ctx context.Context) ([]UserData, err
 }
 
 func (ur *mongoUserRepository) GetUsersWithTrackingEnabled(ctx context.Context) ([]UserData, error) {
+	ctx, span := ur.monitor.StartSpan(ctx, "mongoUserRepository.GetUsersWithTrackingEnabled")
+	defer span.End()
+
 	filter := bson.M{"trackingStatus": string(TrackingStatusEnabled)}
 
 	cursor, err := ur.collection.Find(ctx, filter)
@@ -103,6 +116,9 @@ func (ur *mongoUserRepository) GetUsersWithTrackingEnabled(ctx context.Context) 
 }
 
 func (ur *mongoUserRepository) CreateUser(ctx context.Context, user UserData) (UserData, error) {
+	ctx, span := ur.monitor.StartSpan(ctx, "mongoUserRepository.CreateUser")
+	defer span.End()
+
 	_, err := ur.collection.InsertOne(ctx, user)
 	if err != nil {
 		return UserData{}, errors.Join(database.ErrGeneric, err)
@@ -111,6 +127,9 @@ func (ur *mongoUserRepository) CreateUser(ctx context.Context, user UserData) (U
 }
 
 func (ur *mongoUserRepository) UpdateUser(ctx context.Context, user UserData) (UserData, error) {
+	ctx, span := ur.monitor.StartSpan(ctx, "mongoUserRepository.UpdateUser")
+	defer span.End()
+
 	filter := bson.M{"_id": user.Id}
 	update := bson.M{"$set": user}
 

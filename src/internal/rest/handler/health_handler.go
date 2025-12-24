@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/health"
-	"github.com/ctfloyd/hazelmere-api/src/internal/rest/middleware"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/middleware"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/go-chi/chi/v5"
 	chiWare "github.com/go-chi/chi/v5/middleware"

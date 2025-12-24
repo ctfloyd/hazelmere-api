@@ -11,7 +11,9 @@ import (
 	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
 )
+
 
 const MaxIntervalDuration = 5 * 365 * 24 * time.Hour
 
@@ -49,6 +51,9 @@ func NewDeltaService(logger hz_logger.Logger, repository DeltaRepository, cache 
 }
 
 func (ds *deltaService) CreateDelta(ctx context.Context, delta HiscoreDelta) (HiscoreDelta, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "deltaService.CreateDelta")
+	defer span.End()
+
 	if delta.Id == "" {
 		delta.Id = uuid.New().String()
 	}
@@ -74,6 +79,9 @@ func (ds *deltaService) CreateDelta(ctx context.Context, delta HiscoreDelta) (Hi
 }
 
 func (ds *deltaService) GetLatestDeltaForUser(ctx context.Context, userId string) (HiscoreDelta, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "deltaService.GetLatestDeltaForUser")
+	defer span.End()
+
 	// Check cache first - returns domain type directly
 	if delta, found := ds.cache.GetLatestDelta(userId); found {
 		ds.logger.DebugArgs(ctx, "Cache hit for latest delta for user %s", userId)
@@ -93,6 +101,9 @@ func (ds *deltaService) GetLatestDeltaForUser(ctx context.Context, userId string
 }
 
 func (ds *deltaService) GetDeltasInRange(ctx context.Context, userId string, startTime, endTime time.Time) (DeltaIntervalResponse, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "deltaService.GetDeltasInRange")
+	defer span.End()
+
 	startTime, endTime, err := validateDeltaInterval(startTime, endTime)
 	if err != nil {
 		return DeltaIntervalResponse{}, err
@@ -121,6 +132,9 @@ func (ds *deltaService) GetDeltasInRange(ctx context.Context, userId string, sta
 }
 
 func (ds *deltaService) GetDeltaSummary(ctx context.Context, userId string, startTime, endTime time.Time) (api.GetDeltaSummaryResponse, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "deltaService.GetDeltaSummary")
+	defer span.End()
+
 	startTime, endTime, err := validateDeltaInterval(startTime, endTime)
 	if err != nil {
 		return api.GetDeltaSummaryResponse{}, err
@@ -215,6 +229,9 @@ func (ds *deltaService) GetDeltaSummary(ctx context.Context, userId string, star
 }
 
 func (ds *deltaService) PrimeCache(ctx context.Context) error {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "deltaService.PrimeCache")
+	defer span.End()
+
 	users, err := ds.userRepository.GetUsersWithTrackingEnabled(ctx)
 	if err != nil {
 		return err

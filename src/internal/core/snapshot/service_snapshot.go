@@ -10,7 +10,9 @@ import (
 	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
 )
+
 
 const MaxIntervalDuration = 5 * 365 * 2 * 24 * time.Hour
 
@@ -58,6 +60,9 @@ const (
 var ErrInvalidAggregationWindow = errors.New("invalid aggregation window for requested time range")
 
 func (ss *snapshotService) GetSnapshotInterval(ctx context.Context, userId string, startTime time.Time, endTime time.Time, aggregationWindow api.AggregationWindow) (SnapshotIntervalResponse, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "snapshotService.GetSnapshotInterval")
+	defer span.End()
+
 	startTime, endTime, err := validateSnapshotInterval(startTime, endTime)
 	if err != nil {
 		return SnapshotIntervalResponse{}, err
@@ -110,6 +115,9 @@ func normalizeAggregationWindow(window api.AggregationWindow) api.AggregationWin
 }
 
 func (ss *snapshotService) GetAllSnapshotsForUser(ctx context.Context, userId string) ([]HiscoreSnapshot, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "snapshotService.GetAllSnapshotsForUser")
+	defer span.End()
+
 	data, err := ss.repository.GetAllSnapshotsForUser(ctx, userId)
 	if err != nil {
 		return nil, errors.Join(ErrSnapshotGeneric, err)
@@ -118,6 +126,9 @@ func (ss *snapshotService) GetAllSnapshotsForUser(ctx context.Context, userId st
 }
 
 func (ss *snapshotService) GetSnapshotById(ctx context.Context, id string) (HiscoreSnapshot, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "snapshotService.GetSnapshotById")
+	defer span.End()
+
 	data, err := ss.repository.GetSnapshotById(ctx, id)
 	if err != nil {
 		if errors.Is(err, database.ErrNotFound) {
@@ -129,6 +140,9 @@ func (ss *snapshotService) GetSnapshotById(ctx context.Context, id string) (Hisc
 }
 
 func (ss *snapshotService) GetSnapshotForUserNearestTimestamp(ctx context.Context, userId string, timestamp int64) (HiscoreSnapshot, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "snapshotService.GetSnapshotForUserNearestTimestamp")
+	defer span.End()
+
 	date := time.Unix(0, timestamp*int64(time.Millisecond))
 
 	data, err := ss.repository.GetSnapshotForUserNearestTimestamp(ctx, userId, date)
@@ -144,6 +158,9 @@ func (ss *snapshotService) GetSnapshotForUserNearestTimestamp(ctx context.Contex
 }
 
 func (ss *snapshotService) CreateSnapshot(ctx context.Context, snapshot HiscoreSnapshot) (HiscoreSnapshot, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "snapshotService.CreateSnapshot")
+	defer span.End()
+
 	snapshot.Id = uuid.New().String()
 
 	err := ss.validator.ValidateSnapshot(snapshot)
@@ -176,6 +193,9 @@ func (ss *snapshotService) CreateSnapshot(ctx context.Context, snapshot HiscoreS
 }
 
 func (ss *snapshotService) GetLatestSnapshotForUser(ctx context.Context, userId string) (HiscoreSnapshot, error) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "snapshotService.GetLatestSnapshotForUser")
+	defer span.End()
+
 	data, err := ss.repository.GetLatestSnapshotForUser(ctx, userId)
 	if err != nil {
 		if errors.Is(err, database.ErrNotFound) {

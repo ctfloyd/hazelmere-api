@@ -17,7 +17,7 @@ COMMIT := $(or $(RAILWAY_GIT_COMMIT_SHA),$(shell git rev-parse --short HEAD 2>/d
 BUILD_TIME := $(shell powershell -Command "Get-Date -UFormat '%Y-%m-%dT%H:%M:%SZ'" 2>/dev/null || date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null)
 
 # Go build flags
-VERSION_PKG := github.com/ctfloyd/hazelmere-api/src/internal/version
+VERSION_PKG := github.com/ctfloyd/hazelmere-api/src/internal/foundation/version
 LDFLAGS := -ldflags "-X $(VERSION_PKG).Commit=$(COMMIT) -X $(VERSION_PKG).BuildTime=$(BUILD_TIME)"
 
 # Default target

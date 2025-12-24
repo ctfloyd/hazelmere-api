@@ -3,7 +3,6 @@ package backfill
 import (
 	"context"
 	"fmt"
-	wom2 "github.com/ctfloyd/hazelmere-api/src/internal/dependency/wom"
 	"log/slog"
 	"maps"
 	"os"
@@ -14,6 +13,8 @@ import (
 
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/snapshot"
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/user"
+	wom2 "github.com/ctfloyd/hazelmere-api/src/internal/dependency/wom"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/monitor"
 	"github.com/ctfloyd/hazelmere-api/src/internal/initialize"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_config"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
@@ -59,9 +60,10 @@ func RunSnapshots(configPath string, args []string) error {
 	uCollection := client.Database(dbName).Collection(uCName)
 
 	logger := hz_logger.NewZeroLogAdapater(hz_logger.LogLevelInfo)
+	mon := monitor.New(logger)
 
 	backfiller := &snapshotBackfiller{
-		userRepo:     user.NewUserRepository(uCollection, logger),
+		userRepo:     user.NewUserRepository(uCollection, mon),
 		snapshotRepo: snapshot.NewSnapshotRepository(sCollection, logger),
 		wiseOldMan:   wom2.NewClient(logger),
 		activityMap:  populateActivityMap(ctx, sCollection),

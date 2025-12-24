@@ -14,9 +14,10 @@ import (
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/user"
 	"github.com/ctfloyd/hazelmere-api/src/internal/core/worker"
 	"github.com/ctfloyd/hazelmere-api/src/internal/database"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/middleware"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/monitor"
 	"github.com/ctfloyd/hazelmere-api/src/internal/initialize"
 	"github.com/ctfloyd/hazelmere-api/src/internal/rest/handler"
-	"github.com/ctfloyd/hazelmere-api/src/internal/rest/middleware"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_config"
 	"github.com/ctfloyd/hazelmere-commons/pkg/hz_logger"
 	"github.com/go-chi/chi/v5"
@@ -37,6 +38,23 @@ func Run(configPath string, args []string) error {
 
 	logger := hz_logger.NewZeroLogAdapater(hz_logger.LogLevelFromString(config.ValueOrPanic("log.level")))
 	logger.InfoArgs(ctx, "Starting Hazelmere API server (environment: %s)", environment)
+
+	// Initialize OpenTelemetry
+	otelCfg := initialize.OtelConfig{
+		Enabled: config.BoolValueOrPanic("otel.enabled"),
+	}
+	if otelCfg.Enabled {
+		otelCfg.ServiceName = config.ValueOrPanic("otel.serviceName")
+		otelCfg.ServiceNamespace = config.ValueOrPanic("otel.serviceNamespace")
+		otelCfg.Endpoint = config.ValueOrPanic("otel.endpoint")
+		otelCfg.AuthHeader = config.ValueOrPanic("otel.authHeader")
+		logger.Info(ctx, "OpenTelemetry enabled, exporting to Grafana")
+	}
+	otelShutdown, err := initialize.InitOtel(ctx, otelCfg)
+	if err != nil {
+		return fmt.Errorf("failed to initialize OpenTelemetry: %w", err)
+	}
+	defer otelShutdown(ctx)
 
 	router := initialize.InitRouter(logger)
 
@@ -88,6 +106,9 @@ func resolveConfigPath(explicitPath string) (configPath string, environment stri
 func initializeApp(ctx context.Context, logger hz_logger.Logger, config *hz_config.Config, router *chi.Mux, client *mongo.Client, environment string) error {
 	dbName := config.ValueOrPanic("mongo.database.name")
 
+	// Create the monitor (tracer + logger + metrics)
+	mon := monitor.New(logger)
+
 	f := database.NewMongoFactory(client, database.MongoFactoryConfig{
 		DatabaseName:           dbName,
 		SnapshotCollectionName: config.ValueOrPanic("mongo.database.collections.snapshot"),
@@ -96,9 +117,9 @@ func initializeApp(ctx context.Context, logger hz_logger.Logger, config *hz_conf
 	})
 
 	userCollection := f.NewUserCollection()
-	userRepo := user.NewUserRepository(userCollection, logger)
+	userRepo := user.NewUserRepository(userCollection, mon)
 	userValidator := user.NewUserValidator()
-	userService := user.NewUserService(logger, userRepo, userValidator)
+	userService := user.NewUserService(mon, userRepo, userValidator)
 	userHandler := handler.NewUserHandler(logger, userService)
 
 	// Initialize delta components with cache

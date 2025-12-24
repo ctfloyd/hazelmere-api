@@ -4,10 +4,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/ctfloyd/hazelmere-api/src/internal/version"
+	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/version"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.opentelemetry.io/otel"
 )
+
 
 // DependencyStatus represents the health status of a single dependency
 type DependencyStatus struct {
@@ -46,6 +48,9 @@ func NewService(mongoClient *mongo.Client, dbName string, environment string) *S
 // Check performs a deep health check of all dependencies
 // Returns the health response and whether the service is healthy (for HTTP status code)
 func (s *Service) Check(ctx context.Context) (HealthResponse, bool) {
+	ctx, span := otel.Tracer("hazelmere").Start(ctx, "Service.Check")
+	defer span.End()
+
 	info := version.Get()
 
 	response := HealthResponse{
