@@ -56,10 +56,11 @@ func AccountTypeFromValue(value string) AccountType {
 }
 
 type User struct {
-	Id             string         `json:"id"`
-	RunescapeName  string         `json:"runescapeName"`
-	TrackingStatus TrackingStatus `json:"trackingStatus"`
-	AccountType    AccountType    `json:"accountType"`
+	Id               string         `json:"id"`
+	RunescapeName    string         `json:"runescapeName"`
+	TrackingStatus   TrackingStatus `json:"trackingStatus"`
+	AccountType      AccountType    `json:"accountType"`
+	DiscordChannelId string         `json:"discordChannelId"`
 }
 
 func (u User) isTrackingEnabled() bool {
@@ -73,59 +74,65 @@ func (u User) isTrackingDisabled() bool {
 // ToAPI converts the domain User to an API User
 func (u User) ToAPI() api.User {
 	return api.User{
-		Id:             u.Id,
-		RunescapeName:  u.RunescapeName,
-		TrackingStatus: api.TrackingStatusFromValue(string(u.TrackingStatus)),
-		AccountType:    api.AccountTypeFromValue(string(u.AccountType)),
+		Id:               u.Id,
+		RunescapeName:    u.RunescapeName,
+		TrackingStatus:   api.TrackingStatusFromValue(string(u.TrackingStatus)),
+		AccountType:      api.AccountTypeFromValue(string(u.AccountType)),
+		DiscordChannelId: u.DiscordChannelId,
 	}
 }
 
 // FromAPI creates a domain User from an API User (call as User{}.FromAPI(...))
 func (User) FromAPI(user api.User) User {
 	return User{
-		Id:             user.Id,
-		RunescapeName:  user.RunescapeName,
-		TrackingStatus: TrackingStatusFromValue(string(user.TrackingStatus)),
-		AccountType:    AccountTypeFromValue(string(user.AccountType)),
+		Id:               user.Id,
+		RunescapeName:    user.RunescapeName,
+		TrackingStatus:   TrackingStatusFromValue(string(user.TrackingStatus)),
+		AccountType:      AccountTypeFromValue(string(user.AccountType)),
+		DiscordChannelId: user.DiscordChannelId,
 	}
 }
 
 // FromCreateRequest creates a domain User from a CreateUserRequest (call as User{}.FromCreateRequest(...))
 func (User) FromCreateRequest(request api.CreateUserRequest) User {
 	return User{
-		RunescapeName:  request.RunescapeName,
-		TrackingStatus: TrackingStatusFromValue(string(request.TrackingStatus)),
-		AccountType:    AccountTypeFromValue(string(request.AccountType)),
+		RunescapeName:    request.RunescapeName,
+		TrackingStatus:   TrackingStatusFromValue(string(request.TrackingStatus)),
+		AccountType:      AccountTypeFromValue(string(request.AccountType)),
+		DiscordChannelId: request.DiscordChannelId,
 	}
 }
 
 // FromUpdateRequest creates a domain User from an UpdateUserRequest (call as User{}.FromUpdateRequest(...))
 func (User) FromUpdateRequest(request api.UpdateUserRequest) User {
 	return User{
-		Id:             request.Id,
-		RunescapeName:  request.RunescapeName,
-		TrackingStatus: TrackingStatusFromValue(string(request.TrackingStatus)),
-		AccountType:    AccountTypeFromValue(string(request.AccountType)),
+		Id:               request.Id,
+		RunescapeName:    request.RunescapeName,
+		TrackingStatus:   TrackingStatusFromValue(string(request.TrackingStatus)),
+		AccountType:      AccountTypeFromValue(string(request.AccountType)),
+		DiscordChannelId: request.DiscordChannelId,
 	}
 }
 
 // ToData converts the domain User to a data layer UserData
 func (u User) ToData() UserData {
 	return UserData{
-		Id:             u.Id,
-		RunescapeName:  u.RunescapeName,
-		TrackingStatus: string(u.TrackingStatus),
-		AccountType:    string(u.AccountType),
+		Id:               u.Id,
+		RunescapeName:    u.RunescapeName,
+		TrackingStatus:   string(u.TrackingStatus),
+		AccountType:      string(u.AccountType),
+		DiscordChannelId: u.DiscordChannelId,
 	}
 }
 
 // FromData creates a domain User from data layer UserData (call as User{}.FromData(...))
 func (User) FromData(userData UserData) User {
 	return User{
-		Id:             userData.Id,
-		RunescapeName:  userData.RunescapeName,
-		TrackingStatus: TrackingStatusFromValue(userData.TrackingStatus),
-		AccountType:    AccountTypeFromValue(userData.AccountType),
+		Id:               userData.Id,
+		RunescapeName:    userData.RunescapeName,
+		TrackingStatus:   TrackingStatusFromValue(userData.TrackingStatus),
+		AccountType:      AccountTypeFromValue(userData.AccountType),
+		DiscordChannelId: userData.DiscordChannelId,
 	}
 }
 

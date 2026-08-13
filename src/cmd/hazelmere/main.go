@@ -20,6 +20,7 @@ Commands:
   dump                 Dump all database collections to JSON files
   backfill deltas      Backfill delta records from snapshots
   backfill snapshots   Backfill snapshots from Wise Old Man
+  backfill discord-channel  Assign the default Discord channel to users missing one
   fix snapshot-xp      Fix snapshot experience change values
 
 Options:
@@ -33,6 +34,7 @@ Examples:
   hazelmere dump ~/backups/hazelmere
   hazelmere backfill deltas
   hazelmere backfill snapshots
+  hazelmere backfill discord-channel
   hazelmere fix snapshot-xp
 `
 
@@ -81,8 +83,8 @@ func main() {
 
 	case "backfill":
 		if len(filteredArgs) < 1 {
-			fmt.Fprintln(os.Stderr, "Error: backfill requires a subcommand (deltas, snapshots)")
-			fmt.Fprintln(os.Stderr, "Usage: hazelmere backfill <deltas|snapshots>")
+			fmt.Fprintln(os.Stderr, "Error: backfill requires a subcommand (deltas, snapshots, discord-channel)")
+			fmt.Fprintln(os.Stderr, "Usage: hazelmere backfill <deltas|snapshots|discord-channel>")
 			os.Exit(1)
 		}
 		subcmd := filteredArgs[0]
@@ -92,9 +94,11 @@ func main() {
 			err = backfill.RunDeltas(configPath, subargs)
 		case "snapshots":
 			err = backfill.RunSnapshots(configPath, subargs)
+		case "discord-channel":
+			err = backfill.RunDiscordChannel(configPath, subargs)
 		default:
 			fmt.Fprintf(os.Stderr, "Error: unknown backfill subcommand: %s\n", subcmd)
-			fmt.Fprintln(os.Stderr, "Available: deltas, snapshots")
+			fmt.Fprintln(os.Stderr, "Available: deltas, snapshots, discord-channel")
 			os.Exit(1)
 		}
 

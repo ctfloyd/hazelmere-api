@@ -6,6 +6,7 @@ import (
 
 	"github.com/ctfloyd/hazelmere-api/src/internal/database"
 	"github.com/ctfloyd/hazelmere-api/src/internal/foundation/monitor"
+	"github.com/ctfloyd/hazelmere-api/src/pkg/api"
 	"github.com/google/uuid"
 )
 
@@ -67,6 +68,12 @@ func (us *userService) CreateUser(ctx context.Context, user User) (User, error) 
 
 	user.Id = uuid.New().String()
 
+	// Every user must have a channel to post updates to. When the caller does
+	// not specify one, fall back to the shared default channel.
+	if user.DiscordChannelId == "" {
+		user.DiscordChannelId = api.DefaultDiscordChannelId
+	}
+
 	err := us.validator.ValidateUser(user)
 	if err != nil {
 		return User{}, errors.Join(ErrUserValidation, err)
@@ -93,12 +100,18 @@ func (us *userService) UpdateUser(ctx context.Context, user User) (User, error) 
 	ctx, span := us.monitor.StartSpan(ctx, "userService.UpdateUser")
 	defer span.End()
 
-	_, err := us.GetUserById(ctx, user.Id)
+	existing, err := us.GetUserById(ctx, user.Id)
 	if err != nil {
 		if errors.Is(err, database.ErrNotFound) {
 			return User{}, ErrUserNotFound
 		}
 		return User{}, errors.Join(ErrUserGeneric, err)
+	}
+
+	// Preserve the user's existing channel when the update omits one, so a
+	// partial update never blanks out where their messages are sent.
+	if user.DiscordChannelId == "" {
+		user.DiscordChannelId = existing.DiscordChannelId
 	}
 
 	err = us.validator.ValidateUser(user)

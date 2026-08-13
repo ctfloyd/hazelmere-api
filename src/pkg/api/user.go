@@ -1,5 +1,10 @@
 package api
 
+// DefaultDiscordChannelId is the Discord channel a user's updates are posted to
+// when no channel has been explicitly assigned. Existing users were backfilled
+// to this channel (see `hazelmere backfill discord-channel`).
+const DefaultDiscordChannelId = "1254568400282189846"
+
 type TrackingStatus string
 
 const (
@@ -54,10 +59,11 @@ func AccountTypeFromValue(value string) AccountType {
 }
 
 type User struct {
-	Id             string         `json:"id"`
-	RunescapeName  string         `json:"runescapeName"`
-	TrackingStatus TrackingStatus `json:"trackingStatus"`
-	AccountType    AccountType    `json:"accountType"`
+	Id               string         `json:"id"`
+	RunescapeName    string         `json:"runescapeName"`
+	TrackingStatus   TrackingStatus `json:"trackingStatus"`
+	AccountType      AccountType    `json:"accountType"`
+	DiscordChannelId string         `json:"discordChannelId"`
 }
 
 func (u *User) IsTrackingEnabled() bool {
@@ -97,19 +103,21 @@ type GetUserByIdResponse struct {
 }
 
 type CreateUserRequest struct {
-	RunescapeName  string         `json:"runescapeName"`
-	TrackingStatus TrackingStatus `json:"trackingStatus"`
-	AccountType    AccountType    `json:"accountType"`
+	RunescapeName    string         `json:"runescapeName"`
+	TrackingStatus   TrackingStatus `json:"trackingStatus"`
+	AccountType      AccountType    `json:"accountType"`
+	DiscordChannelId string         `json:"discordChannelId"`
 }
 type CreateUserResponse struct {
 	User User `json:"user"`
 }
 
 type UpdateUserRequest struct {
-	Id             string         `json:"id"`
-	RunescapeName  string         `json:"runescapeName"`
-	TrackingStatus TrackingStatus `json:"trackingStatus"`
-	AccountType    AccountType    `json:"accountType"`
+	Id               string         `json:"id"`
+	RunescapeName    string         `json:"runescapeName"`
+	TrackingStatus   TrackingStatus `json:"trackingStatus"`
+	AccountType      AccountType    `json:"accountType"`
+	DiscordChannelId string         `json:"discordChannelId"`
 }
 type UpdateUserResponse struct {
 	User User `json:"user"`
